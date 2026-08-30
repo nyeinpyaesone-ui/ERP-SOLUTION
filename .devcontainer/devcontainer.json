@@ -16,7 +16,8 @@
   "containerEnv": {
     "PYTHONDONTWRITEBYTECODE": "1",
     "PYTHONUNBUFFERED": "1",
-    "PIP_DISABLE_PIP_VERSION_CHECK": "1"
+    "PIP_DISABLE_PIP_VERSION_CHECK": "1",
+    "DJANGO_SETTINGS_MODULE": "config.settings.development"
   },
   "forwardPorts": [8000, 5432, 6379],
   "portsAttributes": {
@@ -50,15 +51,23 @@
         "redhat.vscode-yaml",
         "eamodio.gitlens",
         "github.copilot",
-        "github.vscode-pull-request-github"
+        "github.vscode-pull-request-github",
+        "batisteo.vscode-django"
       ],
       "settings": {
         "python.defaultInterpreterPath": "/opt/venv/bin/python",
         "python.testing.pytestEnabled": true,
-        "python.testing.pytestArgs": ["tests"],
+        "python.testing.pytestArgs": ["tests/", "--ds=config.settings.development"],
+        "python.linting.enabled": true,
+        "python.linting.flake8Enabled": true,
+        "python.formatting.provider": "black",
         "editor.formatOnSave": true,
         "editor.codeActionsOnSave": {
           "source.organizeImports": "explicit"
+        },
+        "[python]": {
+          "editor.defaultFormatter": "ms-python.black-formatter",
+          "editor.tabSize": 4
         }
       }
     }
@@ -66,6 +75,11 @@
   "postCreateCommand": "bash .devcontainer/post-create.sh",
   "remoteEnv": {
     "DATABASE_URL": "postgres://devuser:devpass@db:5432/erp_dev",
+    "DB_NAME": "erp_dev",
+    "DB_USER": "devuser",
+    "DB_PASSWORD": "devpass",
+    "DB_HOST": "db",
+    "DB_PORT": "5432",
     "REDIS_URL": "redis://redis:6379/0",
     "SECRET_KEY": "django-insecure-dev-only-change-in-prod"
   },
