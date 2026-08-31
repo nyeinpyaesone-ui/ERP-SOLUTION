@@ -1,5 +1,5 @@
 {
-  "name": "ERP-SOLUTION Development (Enterprise)",
+  "name": "ERP-SOLUTION Development",
   "build": {
     "dockerfile": "Dockerfile",
     "context": ".."
