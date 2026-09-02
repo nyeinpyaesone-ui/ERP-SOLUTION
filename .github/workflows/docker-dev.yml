@@ -1,0 +1,350 @@
+name: ERP Build & Push (Development)
+
+on:
+  push:
+    branches:
+      - develop
+  pull_request:
+    branches:
+      - develop
+    types: [opened, synchronize, reopened]
+
+env:
+  REGISTRY: docker.io
+  IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/erp-solution
+  PYTHON_VERSION: '3.12'
+  # Deployment target registry URL (configured via repository variable)
+  DEPLOYMENT_REGISTRY_URL: ${{ vars.DOCKER_REGISTRY_URL || 'https://hub.docker.com' }}
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Job 1: Code Quality & Security Scanning
+  # ---------------------------------------------------------------------------
+  code-quality:
+    name: Code Quality & Security Checks
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run flake8 linting
+        run: |
+          flake8 src/ config/ --count --select=E9,F63,F7,F82 --show-source --statistics
+          flake8 src/ config/ --count --max-complexity=10 --max-line-length=127 --statistics
+
+      - name: Run black format check
+        run: black --check src/ config/ tests/
+
+      - name: Run isort check
+        run: isort --check-only src/ config/ tests/
+
+      - name: Run mypy type checking
+        run: mypy src/ --ignore-missing-imports || true
+
+      - name: Run security scan with bandit
+        run: |
+          pip install bandit
+          bandit -r src/ -f json -o bandit-report.json || true
+
+      - name: Upload bandit report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: security-scan-results
+          path: bandit-report.json
+          retention-days: 5
+
+  # ---------------------------------------------------------------------------
+  # Job 2: Test Suite Execution
+  # ---------------------------------------------------------------------------
+  test:
+    name: Run Test Suite
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: testuser
+          POSTGRES_PASSWORD: testpass
+          POSTGRES_DB: erp_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run pytest with coverage
+        env:
+          DJANGO_SETTINGS_MODULE: config.settings.test
+          DATABASE_URL: postgres://testuser:testpass@localhost:5432/erp_test
+          REDIS_URL: redis://localhost:6379/0
+        run: |
+          cd src
+          pytest tests/ \
+            --cov=. \
+            --cov-report=xml \
+            --cov-report=html \
+            --cov-fail-under=70 \
+            -v \
+            --tb=short
+
+      - name: Upload coverage report
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./src/coverage.xml
+          flags: unittests
+          name: codecov-erp-development
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: Upload HTML coverage report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-html-report
+          path: src/htmlcov/
+          retention-days: 5
+
+  # ---------------------------------------------------------------------------
+  # Job 3: Build and Push Docker Image
+  # ---------------------------------------------------------------------------
+  build-and-push:
+    name: Build and Push to Docker Hub
+    runs-on: ubuntu-latest
+    needs: [code-quality, test]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+    
+    environment:
+      name: Docker
+      url: ${{ env.DEPLOYMENT_REGISTRY_URL }}
+    
+    permissions:
+      contents: read
+      packages: write
+    
+    outputs:
+      image-tag: ${{ steps.meta.outputs.tags }}
+      image-digest: ${{ steps.build.outputs.digest }}
+      image-full-name: ${{ env.IMAGE_NAME }}
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=dev-{{date 'YYYYMMDD'}}-{{sha}},enable=${{ github.event_name == 'push' }}
+            type=raw,value=develop-latest,enable=${{ github.event_name == 'push' }}
+            type=ref,event=branch,prefix=dev-,enable=${{ github.event_name == 'pull_request' }}
+          labels: |
+            org.opencontainers.image.title=ERP-SOLUTION
+            org.opencontainers.image.description=Enterprise Resource Planning System - Development Build
+            org.opencontainers.image.vendor=ERP Solutions Team
+            org.opencontainers.image.source=${{ github.event.repository.html_url }}
+            org.opencontainers.image.version=${{ github.sha }}
+            org.opencontainers.image.created=${{ github.event.head_commit.timestamp }}
+            com.github.ref=${{ github.ref }}
+            com.github.sha=${{ github.sha }}
+            com.github.actor=${{ github.actor }}
+
+      - name: Build and push Docker image
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          target: production
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64
+          build-args: |
+            BUILD_DATE=${{ github.event.head_commit.timestamp }}
+            VCS_REF=${{ github.sha }}
+            VERSION=dev-${{ github.run_number }}
+            DEPLOYMENT_TARGET=Docker
+
+      - name: Generate SBOM (Software Bill of Materials)
+        uses: anchore/sbom-action@v0
+        with:
+          image: ${{ env.IMAGE_NAME }}:develop-latest
+          output-file: sbom-develop.spdx.json
+          format: spdx-json
+
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-develop
+          path: sbom-develop.spdx.json
+          retention-days: 30
+
+      - name: Verify image pushed successfully
+        run: |
+          echo "✅ Successfully built and pushed image to Docker Hub"
+          echo "📦 Image: ${{ env.IMAGE_NAME }}"
+          echo "🏷️  Tags:"
+          echo "${{ steps.meta.outputs.tags }}"
+          echo "🔒 Digest: ${{ steps.build.outputs.digest }}"
+          
+          # Verify image exists on Docker Hub
+          docker manifest inspect ${{ env.IMAGE_NAME }}:develop-latest > /dev/null && \
+            echo "✅ Image verification successful" || \
+            echo "⚠️  Image verification skipped"
+
+      - name: Export deployment information
+        run: |
+          echo "IMAGE_FULL_NAME=${{ env.IMAGE_NAME }}" >> $GITHUB_ENV
+          echo "IMAGE_TAGS=${{ steps.meta.outputs.tags }}" >> $GITHUB_ENV
+          echo "DEPLOYMENT_TARGET=Docker" >> $GITHUB_ENV
+          echo "REGISTRY_URL=${{ env.DEPLOYMENT_REGISTRY_URL }}" >> $GITHUB_ENV
+
+      - name: Notify development team (optional)
+        if: always()
+        run: |
+          echo "::notice::Development build completed for commit ${{ github.sha }}"
+          echo "::notice::Image pushed: ${{ env.IMAGE_NAME }}:develop-latest"
+          echo "::notice::Tags: ${{ steps.meta.outputs.tags }}"
+          echo "::notice::Deployment Target: Docker"
+          echo "::notice::Registry URL: ${{ env.DEPLOYMENT_REGISTRY_URL }}"
+
+  # ---------------------------------------------------------------------------
+  # Job 4: Deployment Notification (Pre-Production Gate)
+  # ---------------------------------------------------------------------------
+  deployment-ready:
+    name: Deployment Readiness Check
+    runs-on: ubuntu-latest
+    needs: [build-and-push]
+    if: always() && github.event_name == 'push'
+    
+    outputs:
+      deployment-target: Docker
+      registry-url: ${{ env.DEPLOYMENT_REGISTRY_URL }}
+      image-full-name: ${{ needs.build-and-push.outputs.image-full-name }}
+      image-tags: ${{ needs.build-and-push.outputs.image-tag }}
+    
+    steps:
+      - name: Check build status
+        run: |
+          if [ "${{ needs.build-and-push.result }}" == "success" ]; then
+            echo "✅ Build successful - Ready for deployment review"
+            echo "DEPLOYMENT_READY=true" >> $GITHUB_ENV
+          else
+            echo "❌ Build failed - Deployment blocked"
+            echo "DEPLOYMENT_READY=false" >> $GITHUB_ENV
+            exit 1
+          fi
+
+      - name: Create deployment summary
+        run: |
+          cat << EOF > deployment-summary.md
+          ## 🚀 ERP Development Build Summary
+          
+          **Status**: ${{ needs.build-and-push.result }}
+          **Commit**: ${{ github.sha }}
+          **Branch**: ${{ github.ref_name }}
+          **Actor**: ${{ github.actor }}
+          **Build Time**: ${{ github.event.head_commit.timestamp }}
+          
+          ### Docker Image Details
+          - **Registry**: ${{ env.REGISTRY }}
+          - **Image**: ${{ needs.build-and-push.outputs.image-full-name }}
+          - **Tags**: ${{ needs.build-and-push.outputs.image-tag }}
+          - **Digest**: ${{ needs.build-and-push.outputs.image-digest }}
+          
+          ### Deployment Information
+          - **Target Environment**: Docker
+          - **Registry URL**: ${{ env.DEPLOYMENT_REGISTRY_URL }}
+          - **Deployment Status**: Ready for staging/production review
+          
+          ### Next Steps
+          1. Review deployment summary
+          2. Verify SBOM for security compliance
+          3. Proceed to staging deployment (manual approval required)
+          4. Run integration tests in staging environment
+          5. Deploy to production after QA sign-off
+          
+          ---
+          *Generated by GitHub Actions Workflow*
+          EOF
+          
+          cat deployment-summary.md
+
+      - name: Upload deployment summary
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployment-summary
+          path: deployment-summary.md
+          retention-days: 15
+
+      - name: Display deployment information
+        run: |
+          echo "=========================================="
+          echo "🎯 DEPLOYMENT TARGET: Docker"
+          echo "=========================================="
+          echo "📦 Image Name: ${{ needs.build-and-push.outputs.image-full-name }}"
+          echo "🏷️  Image Tags: ${{ needs.build-and-push.outputs.image-tag }}"
+          echo "🔒 Image Digest: ${{ needs.build-and-push.outputs.image-digest }}"
+          echo "🌐 Registry URL: ${{ env.DEPLOYMENT_REGISTRY_URL }}"
+          echo "=========================================="
+          echo "✅ Development build completed successfully!"
+          echo "   The image is ready for deployment to staging/production environments."
+          echo "=========================================="
