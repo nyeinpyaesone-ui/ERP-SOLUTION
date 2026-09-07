@@ -33,9 +33,9 @@ class TestWarehouseViewSet:
         ]
     
     def test_list_warehouses(self, db, api_client, warehouses):
-        response = api_client.get('/api/warehouses/')
+        response = api_client.get('/api/inventory/warehouses/')
         assert response.status_code == status.HTTP_200_OK
-        assert len(response.data) == 2
+        assert len(response.data['results']) == 2
     
     def test_create_warehouse(self, db, api_client):
         data = {
@@ -43,27 +43,27 @@ class TestWarehouseViewSet:
             'code': 'NWH001',
             'address': '123 New St'
         }
-        response = api_client.post('/api/warehouses/', data)
+        response = api_client.post('/api/inventory/warehouses/', data)
         assert response.status_code == status.HTTP_201_CREATED
         assert Warehouse.objects.filter(code='NWH001').exists()
     
     def test_retrieve_warehouse(self, db, api_client, warehouses):
         warehouse = warehouses[0]
-        response = api_client.get(f'/api/warehouses/{warehouse.id}/')
+        response = api_client.get(f'/api/inventory/warehouses/{warehouse.id}/')
         assert response.status_code == status.HTTP_200_OK
         assert response.data['code'] == 'WH001'
     
     def test_update_warehouse(self, db, api_client, warehouses):
         warehouse = warehouses[0]
         data = {'name': 'Updated Name'}
-        response = api_client.patch(f'/api/warehouses/{warehouse.id}/', data)
+        response = api_client.patch(f'/api/inventory/warehouses/{warehouse.id}/', data)
         assert response.status_code == status.HTTP_200_OK
         warehouse.refresh_from_db()
         assert warehouse.name == 'Updated Name'
     
     def test_delete_warehouse(self, db, api_client, warehouses):
         warehouse = warehouses[0]
-        response = api_client.delete(f'/api/warehouses/{warehouse.id}/')
+        response = api_client.delete(f'/api/inventory/warehouses/{warehouse.id}/')
         assert response.status_code == status.HTTP_204_NO_CONTENT
         assert not Warehouse.objects.filter(id=warehouse.id).exists()
 
@@ -98,9 +98,9 @@ class TestProductViewSet:
         ]
     
     def test_list_products(self, db, api_client, products):
-        response = api_client.get('/api/products/')
+        response = api_client.get('/api/inventory/products/')
         assert response.status_code == status.HTTP_200_OK
-        assert len(response.data) == 2
+        assert len(response.data['results']) == 2
     
     def test_create_product(self, db, api_client, category):
         data = {
@@ -109,22 +109,22 @@ class TestProductViewSet:
             'category': category.id,
             'unit_price': 29.99
         }
-        response = api_client.post('/api/products/', data)
+        response = api_client.post('/api/inventory/products/', data)
         assert response.status_code == status.HTTP_201_CREATED
         assert Product.objects.filter(sku='NEW001').exists()
     
     def test_search_products(self, db, api_client, products):
-        response = api_client.get('/api/products/?search=Product+1')
+        response = api_client.get('/api/inventory/products/?search=Product+1')
         assert response.status_code == status.HTTP_200_OK
-        assert len(response.data) == 1
-        assert response.data[0]['sku'] == 'PRD001'
+        assert len(response.data['results']) == 1
+        assert response.data['results'][0]['sku'] == 'PRD001'
     
     def test_stock_summary_action(self, db, api_client, products):
         product = products[0]
         warehouse = Warehouse.objects.create(name="WH1", code="WH1")
         StockLevel.objects.create(product=product, warehouse=warehouse, quantity=50)
         
-        response = api_client.get(f'/api/products/{product.id}/stock_summary/')
+        response = api_client.get(f'/api/inventory/products/{product.id}/stock_summary/')
         assert response.status_code == status.HTTP_200_OK
         assert response.data['total_stock'] == 50
         assert 'warehouses' in response.data
@@ -158,9 +158,9 @@ class TestStockLevelViewSet:
         return {'stock': stock, 'product': product, 'warehouse': warehouse}
     
     def test_list_stock_levels(self, db, api_client, setup_stock):
-        response = api_client.get('/api/stock-levels/')
+        response = api_client.get('/api/inventory/stock-levels/')
         assert response.status_code == status.HTTP_200_OK
-        assert len(response.data) >= 1
+        assert len(response.data['results']) >= 1
     
     def test_low_stock_action(self, db, api_client, setup_stock):
         # Create a low stock item
@@ -179,7 +179,7 @@ class TestStockLevelViewSet:
             quantity=10  # Below reorder level
         )
         
-        response = api_client.get('/api/stock-levels/low_stock/')
+        response = api_client.get('/api/inventory/stock-levels/low_stock/')
         assert response.status_code == status.HTTP_200_OK
         # Should include our low stock item
         assert any(item['product_sku'] == 'LOW001' for item in response.data)
@@ -213,14 +213,14 @@ class TestStockMovementViewSet:
         return {'movement': movement, 'product': product, 'warehouse': warehouse}
     
     def test_list_movements(self, db, api_client, setup_movement):
-        response = api_client.get('/api/stock-movements/')
+        response = api_client.get('/api/inventory/stock-movements/')
         assert response.status_code == status.HTTP_200_OK
-        assert len(response.data) >= 1
+        assert len(response.data['results']) >= 1
     
     def test_filter_movements_by_type(self, db, api_client, setup_movement):
-        response = api_client.get('/api/stock-movements/?movement_type=IN')
+        response = api_client.get('/api/inventory/stock-movements/?movement_type=IN')
         assert response.status_code == status.HTTP_200_OK
-        assert len(response.data) >= 1
+        assert len(response.data['results']) >= 1
     
     def test_adjust_stock_action(self, db, api_client, setup_movement):
         data = {
@@ -231,7 +231,7 @@ class TestStockMovementViewSet:
             'reference': 'ADJ001',
             'notes': 'Test adjustment'
         }
-        response = api_client.post('/api/stock-movements/adjust_stock/', data)
+        response = api_client.post('/api/inventory/stock-movements/adjust_stock/', data)
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data['quantity'] == 100
         assert response.data['reference'] == 'ADJ001'
