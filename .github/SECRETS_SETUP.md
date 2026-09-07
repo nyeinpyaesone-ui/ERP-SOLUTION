@@ -1,6 +1,6 @@
 # Enterprise ERP Solution - Required Secrets Configuration
 # =========================================================
-# 
+#
 # This document outlines the required GitHub repository secrets for the
 # ERP-SOLUTION CI/CD pipeline. These secrets must be configured in your
 # GitHub repository settings before the workflows can run successfully.
@@ -17,7 +17,7 @@
 # Docker Hub Authentication
 # --------------------------
 # Used for pushing Docker images to Docker Hub registry
-# 
+#
 # Secret Name: DOCKERHUB_USERNAME
 # Value: Your Docker Hub username (e.g., "nyeinpyaesone-ui")
 # Description: Docker Hub account username for image push operations
@@ -80,7 +80,7 @@
 # -----------------------------------------------------------------------------
 # ENVIRONMENT CONFIGURATION
 # -----------------------------------------------------------------------------
-# 
+#
 # In addition to secrets, configure the following environment in GitHub:
 #
 # Environment Name: Docker
@@ -146,7 +146,7 @@
 # -----------------------------------------------------------------------------
 #
 # 📌 You have already set up the required secrets!
-# 
+#
 # Next Steps:
 # 1. Configure Repository Variables (see VARIABLES_SETUP.md)
 #    - DOCKER_REGISTRY_URL: Your registry URL (e.g., https://hub.docker.com)

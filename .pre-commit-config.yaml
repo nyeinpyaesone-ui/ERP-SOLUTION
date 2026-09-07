@@ -1,40 +1,218 @@
+# =============================================================================
+# Pre-commit Configuration for Modular ERP System
+# Professional Code Quality & Security Pipeline
+# =============================================================================
+# Install: pre-commit install
+# Run manually: pre-commit run --all-files
+# Skip hooks: git commit -m "msg" --no-verify
+# =============================================================================
+
 repos:
+  # ---------------------------------------------------------------------------
+  # Core Git Hooks
+  # ---------------------------------------------------------------------------
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.5.0
     hooks:
       - id: trailing-whitespace
       - id: end-of-file-fixer
       - id: check-yaml
+        args: ["--unsafe"]
       - id: check-json
+      - id: check-toml
       - id: check-added-large-files
+        args: ["--maxkb=1000"]
       - id: check-merge-conflict
+      - id: check-case-conflict
       - id: detect-private-key
+      - id: detect-aws-credentials
+        args: ["--allow-missing-credentials"]
 
+  # ---------------------------------------------------------------------------
+  # Python Code Formatting
+  # ---------------------------------------------------------------------------
   - repo: https://github.com/psf/black
-    rev: 23.12.0
+    rev: 23.12.1
     hooks:
       - id: black
+        name: "Black: Code Formatter"
         language_version: python3
+        args: ["--line-length", "100", "--target-version", "py310"]
 
   - repo: https://github.com/pycqa/isort
     rev: 5.13.2
     hooks:
       - id: isort
-        name: isort (python)
+        name: "isort: Import Sorter"
+        args: ["--profile", "black", "--filter-files", "--line-length", "100"]
 
+  - repo: https://github.com/PyCQA/autoflake
+    rev: v2.2.1
+    hooks:
+      - id: autoflake
+        name: "autoflake: Remove unused imports"
+        args: ["--in-place", "--remove-all-unused-imports", "--ignore-init-module-imports"]
+
+  # ---------------------------------------------------------------------------
+  # Python Linting & Analysis
+  # ---------------------------------------------------------------------------
   - repo: https://github.com/pycqa/flake8
-    rev: 6.1.0
+    rev: 7.0.0
     hooks:
       - id: flake8
+        name: "flake8: Style Guide Enforcement"
+        args: ["--config=setup.cfg"]
+        additional_dependencies:
+          - flake8-bugbear>=23.12.2
+          - flake8-comprehensions>=3.14.0
+          - flake8-docstrings>=1.7.0
+          - flake8-quotes>=3.3.2
 
+  - repo: https://github.com/pycqa/pylint
+    rev: v3.0.3
+    hooks:
+      - id: pylint
+        name: "pylint: Static Code Analysis"
+        entry: bash -c 'pylint "$@" || true' --
+        args: ["--rcfile=.pylintrc"]
+        language: system
+        types: [python]
+
+  # ---------------------------------------------------------------------------
+  # Type Checking
+  # ---------------------------------------------------------------------------
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.7.1
+    rev: v1.8.0
     hooks:
       - id: mypy
-        additional_dependencies: [types-requests, types-PyYAML]
+        name: "mypy: Static Type Checker"
+        args: ["--ignore-missing-imports", "--show-error-codes"]
+        additional_dependencies:
+          - types-requests>=2.31.0.10
+          - types-PyYAML>=6.0.12.12
+          - django-stubs>=4.2.7
+          - djangorestframework-stubs>=3.14.3
 
+  # ---------------------------------------------------------------------------
+  # Security Scanning
+  # ---------------------------------------------------------------------------
   - repo: https://github.com/PyCQA/bandit
-    rev: 1.7.5
+    rev: 1.7.6
     hooks:
       - id: bandit
-        args: ["-r", "src/"]
+        name: "bandit: Security Linter"
+        args: ["-r", "-ll", "-ii"]
+        exclude: ^tests/|^venv/|.venv/
+
+  - repo: https://github.com/safety-dev/safety
+    rev: v2.3.5
+    hooks:
+      - id: safety
+        name: "safety: Dependency Vulnerability Scanner"
+        args: ["check", "--full-report"]
+
+  # ---------------------------------------------------------------------------
+  # Secret Detection
+  # ---------------------------------------------------------------------------
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.4.0
+    hooks:
+      - id: detect-secrets
+        name: "detect-secrets: Secret Detection"
+        args: ["--baseline", ".secrets.baseline"]
+        exclude: .secrets.baseline|requirements.*\.txt
+
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.18.1
+    hooks:
+      - id: gitleaks
+        name: "gitleaks: Git History Secret Scanner"
+        args: ["detect", "--source", ".", "--verbose"]
+
+  # ---------------------------------------------------------------------------
+  # Django-Specific Checks
+  # ---------------------------------------------------------------------------
+  - repo: local
+    hooks:
+      - id: django-check
+        name: "Django: System Check"
+        entry: bash -c 'cd src && python manage.py check --deploy --fail-level WARNING'
+        language: system
+        pass_filenames: false
+        always_run: true
+        require_serial: true
+        files: ^(src/|requirements.*\.txt)$
+
+      - id: django-makemigrations-check
+        name: "Django: Migration Check"
+        entry: bash -c 'cd src && python manage.py makemigrations --check --dry-run'
+        language: system
+        pass_filenames: false
+        always_run: true
+        require_serial: true
+        files: ^src/.*/models/.*\.py$
+
+  # ---------------------------------------------------------------------------
+  # Test Coverage Gate (pre-push only)
+  # ---------------------------------------------------------------------------
+  - repo: local
+    hooks:
+      - id: pytest-coverage
+        name: "pytest: Coverage Gate (70% min)"
+        entry: bash -c 'cd src && python -m pytest --cov=src --cov-fail-under=70 -q'
+        language: system
+        pass_filenames: false
+        always_run: false
+        require_serial: true
+        stages: [pre-push]
+
+  # ---------------------------------------------------------------------------
+  # Documentation Checks
+  # ---------------------------------------------------------------------------
+  - repo: https://github.com/pycqa/docformatter
+    rev: v1.7.5
+    hooks:
+      - id: docformatter
+        name: "docformatter: Docstring Formatter"
+        args: ["--in-place", "--wrap-summaries", "100", "--wrap-descriptions", "100"]
+
+  # ---------------------------------------------------------------------------
+  # Shell Script Checks
+  # ---------------------------------------------------------------------------
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.9.0.9
+    hooks:
+      - id: shellcheck
+        name: "shellcheck: Shell Script Linter"
+        args: ["--severity=warning"]
+        files: \.(sh|bash)$
+
+# =============================================================================
+# Configuration Options
+# =============================================================================
+default_language_version:
+  python: python3.10
+
+ci:
+  autofix_prs: true
+  autoupdate_commit_msg: "chore: pre-commit autoupdate"
+  autoupdate_schedule: weekly
+
+exclude: |
+  (?x)^(
+    .git/|
+    .venv/|
+    venv/|
+    __pycache__/|
+    build/|
+    dist/|
+    *.egg-info/|
+    .eggs/|
+    .mypy_cache/|
+    .pytest_cache/|
+    htmlcov/|
+    tests/htmlcov/|
+    .*\.min\.js|
+    .*\.map$|
+    .secrets.baseline
+  )$

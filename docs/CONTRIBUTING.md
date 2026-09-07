@@ -107,10 +107,10 @@ def test_user_creation():
     # Arrange
     username = "testuser"
     email = "test@example.com"
-    
+
     # Act
     user = User.objects.create_user(username=username, email=email)
-    
+
     # Assert
     assert user.username == username
     assert user.email == email

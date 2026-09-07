@@ -184,9 +184,9 @@ blocker: This security vulnerability must be fixed before merge
 
 ### Example Response
 ```
-I understand your concern about performance. However, 
-this approach improves readability significantly. 
-Given that this code path is rarely executed, I believe 
+I understand your concern about performance. However,
+this approach improves readability significantly.
+Given that this code path is rarely executed, I believe
 the trade-off is acceptable. What do you think?
 ```
 

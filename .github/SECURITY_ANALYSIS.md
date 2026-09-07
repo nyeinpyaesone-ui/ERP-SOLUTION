@@ -70,7 +70,7 @@ env:
   REGISTRY: docker.io  # Public knowledge
   IMAGE_NAME: ${{ github.event.repository.name }}  # Derived from context
   DOCKER_NAMESPACE: ${{ vars.DOCKERHUB_USERNAME || github.repository_owner }}
-  
+
 # ❌ MANUAL (Required)
 steps:
   - name: Login to Docker Hub
