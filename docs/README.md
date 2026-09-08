@@ -53,7 +53,7 @@ pg_restore -d erp_dev backup_file.sql
    ```bash
    # Run tests
    pytest
-   
+
    # Check code quality
    ./scripts/pre-push-tests.sh
    ```
@@ -168,6 +168,6 @@ For questions or issues with the development framework:
 
 ---
 
-**Version**: 1.0.0  
-**Last Updated**: 2024  
+**Version**: 1.0.0
+**Last Updated**: 2024
 **Maintained By**: Development Team

@@ -103,7 +103,7 @@ orders = Order.objects.prefetch_related('items').all()
 # Add database indexes
 class Product(models.Model):
     sku = models.CharField(db_index=True, max_length=50)
-    
+
     class Meta:
         indexes = [
             models.Index(fields=['category', 'created_at']),

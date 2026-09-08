@@ -25,7 +25,7 @@ This repository implements an enterprise-grade CI/CD pipeline with:
 - Health checks included
 
 ### 3. DevContainer Configuration
-**Files**: 
+**Files**:
 - `.devcontainer/devcontainer.json` - Enhanced with PostgreSQL 15 + Redis 7 services
 - `.devcontainer/post-create.sh` - Auto-installs dependencies and runs migrations
 - `.devcontainer/Dockerfile` - Python 3.12 with dev tools
@@ -196,7 +196,7 @@ docker images | grep erp-solution
 
 ### Build Fails at "Log in to Docker Hub"
 **Cause**: Missing or incorrect secrets
-**Fix**: 
+**Fix**:
 1. Verify `DOCKERHUB_USERNAME` and `DOCKERHUB_PASSWORD` exist in Docker environment
 2. Check for typo (`DOCKHUB_USERNAME` vs `DOCKERHUB_USERNAME`)
 
@@ -206,7 +206,7 @@ docker images | grep erp-solution
 
 ### DevContainer Won't Start
 **Cause**: Docker not running or insufficient resources
-**Fix**: 
+**Fix**:
 1. Ensure Docker Desktop is running
 2. Allocate at least 4GB RAM to Docker
 3. Rebuild container: Dev Containers → Rebuild Container

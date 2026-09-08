@@ -42,11 +42,11 @@ Local Code → Security Scan → Integration Tests → GHCR (Primary) → Docker
 ### 3. Build to GHCR (Automatic)
 - **Registry**: `ghcr.io/nyeinpyaesone-ui/erp-solution`
 - **Authentication**: Uses `GITHUB_TOKEN` (auto-configured)
-- **Tags**: 
+- **Tags**:
   - `sha-{SHORT_SHA}` (every commit)
   - `{branch_name}` (develop/main)
   - `latest` (main branch only)
-- **Features**: 
+- **Features**:
   - SBOM generation
   - Provenance attestation
   - Layer caching via GitHub Actions Cache
@@ -156,7 +156,7 @@ The `.devcontainer/devcontainer.json` provides:
 
 ### Docker Hub Mirror Skipped
 **Cause**: Secrets not configured or not on `main` branch
-**Fix**: 
+**Fix**:
 1. Verify `DOCKERHUB_USERNAME` (correct spelling) exists in Docker environment
 2. Ensure push is to `main` branch
 

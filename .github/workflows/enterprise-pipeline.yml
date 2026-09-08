@@ -142,7 +142,7 @@ jobs:
       contents: read
       packages: write
       id-token: write
-    
+
     outputs:
       image-tag: ${{ steps.meta.outputs.tags }}
       image-digest: ${{ steps.build.outputs.digest }}
@@ -260,13 +260,13 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build-ghcr, mirror-dockerhub]
     if: always()
-    
+
     steps:
       - name: Generate Deployment Summary
         run: |
           echo "## 🚀 Deployment Readiness Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          
+
           if [ "${{ needs.build-ghcr.result }}" == "success" ]; then
             echo "✅ **GHCR Build**: Success" >> $GITHUB_STEP_SUMMARY
             echo "- Image: \`ghcr.io/${{ github.repository }}\`" >> $GITHUB_STEP_SUMMARY
@@ -274,7 +274,7 @@ jobs:
           else
             echo "❌ **GHCR Build**: Failed" >> $GITHUB_STEP_SUMMARY
           fi
-          
+
           if [ "${{ needs.mirror-dockerhub.result }}" == "success" ]; then
             echo "✅ **Docker Hub Mirror**: Success" >> $GITHUB_STEP_SUMMARY
             echo "- Image: \`nyeinpyaesone-ui/erp-solution\`" >> $GITHUB_STEP_SUMMARY
@@ -283,7 +283,7 @@ jobs:
           else
             echo "❌ **Docker Hub Mirror**: Failed" >> $GITHUB_STEP_SUMMARY
           fi
-          
+
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 🔐 Security Status" >> $GITHUB_STEP_SUMMARY
           echo "- Vulnerability Scan: Completed" >> $GITHUB_STEP_SUMMARY

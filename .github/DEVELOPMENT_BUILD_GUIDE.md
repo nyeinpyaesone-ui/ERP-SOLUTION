@@ -24,12 +24,12 @@ patterns for building, testing, and deploying Docker containers to Docker Hub.
 
 ### Key Features
 
-✅ **Multi-stage Docker builds** - Optimized production images  
-✅ **Code quality gates** - Automated linting, formatting, and security scans  
-✅ **Comprehensive testing** - pytest with coverage reporting  
-✅ **SBOM generation** - Software Bill of Materials for security compliance  
-✅ **Deployment readiness checks** - Pre-production validation  
-✅ **Artifact management** - Build artifacts retention and traceability  
+✅ **Multi-stage Docker builds** - Optimized production images
+✅ **Code quality gates** - Automated linting, formatting, and security scans
+✅ **Comprehensive testing** - pytest with coverage reporting
+✅ **SBOM generation** - Software Bill of Materials for security compliance
+✅ **Deployment readiness checks** - Pre-production validation
+✅ **Artifact management** - Build artifacts retention and traceability
 
 ---
 
@@ -154,7 +154,7 @@ Runs only on push to `develop` (not on PRs):
 - **Target**: `production` stage from Dockerfile
 - **Platform**: linux/amd64
 - **Cache**: GitHub Actions cache enabled
-- **Tags**: 
+- **Tags**:
   - `develop-latest` (latest stable dev build)
   - `dev-YYYYMMDD-SHA` (traceable daily build)
 
@@ -237,13 +237,13 @@ develop branch          main branch
 
 ### Built-in Security Measures
 
-✅ **Secrets management**: All credentials via GitHub Secrets  
-✅ **Non-root container**: Runs as unprivileged user  
-✅ **SBOM generation**: Full software inventory for compliance  
-✅ **Security scanning**: Bandit SAST on every build  
-✅ **Minimal base image**: python:3.12-slim-bookworm  
-✅ **No cached pip packages**: PIP_NO_CACHE_DIR=1  
-✅ **Health checks**: Container health monitoring  
+✅ **Secrets management**: All credentials via GitHub Secrets
+✅ **Non-root container**: Runs as unprivileged user
+✅ **SBOM generation**: Full software inventory for compliance
+✅ **Security scanning**: Bandit SAST on every build
+✅ **Minimal base image**: python:3.12-slim-bookworm
+✅ **No cached pip packages**: PIP_NO_CACHE_DIR=1
+✅ **Health checks**: Container health monitoring
 
 ### Compliance
 
@@ -314,5 +314,5 @@ For issues or questions:
 
 ---
 
-*Last updated: $(date +%Y-%m-%d)*  
+*Last updated: $(date +%Y-%m-%d)*
 *Version: 1.0.0*

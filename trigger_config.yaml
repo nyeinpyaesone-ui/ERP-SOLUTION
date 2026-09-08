@@ -1,0 +1,169 @@
+# Trigger Configuration - Dynamic module activation and event triggers.
+# This YAML configuration controls:
+# - Which modules are enabled/disabled
+# - API routing prefixes
+# - Module loading priority
+# - Event triggers for cross-module automation
+# - Inter-module dependencies
+
+system:
+  name: "Modular ERP System"
+  version: "2.0.0"
+  environment: "development"
+  debug_mode: true
+
+# Module Configuration
+modules:
+  # Inventory Module - Core warehouse management
+  - name: "inventory"
+    enabled: true
+    api_prefix: "inventory"
+    priority: 1
+    version: "1.0.0"
+    description: "Warehouse, products, and stock management"
+    triggers:
+      - "stock_movement"
+      - "low_stock_alert"
+      - "stock_adjustment"
+    dependencies: []
+    settings:
+      enable_barcode: true
+      enable_batch_tracking: true
+      default_reorder_days: 7
+
+  # HR Module - Human resources management
+  - name: "hr"
+    enabled: false
+    api_prefix: "hr"
+    priority: 2
+    version: "1.0.0"
+    description: "Employee, department, and payroll management"
+    triggers:
+      - "employee_onboarded"
+      - "leave_approved"
+      - "payroll_processed"
+    dependencies: []
+    settings:
+      enable_attendance: true
+      enable_payroll: false
+
+  # Finance Module - Accounting and financial management
+  - name: "finance"
+    enabled: false
+    api_prefix: "finance"
+    priority: 3
+    version: "1.0.0"
+    description: "General ledger, accounts, and financial reporting"
+    triggers:
+      - "invoice_generated"
+      - "payment_processed"
+      - "journal_posted"
+    dependencies:
+      - "inventory"
+    settings:
+      base_currency: "USD"
+      fiscal_year_start: "01-01"
+
+  # Sales Module - CRM and order management
+  - name: "sales"
+    enabled: false
+    api_prefix: "sales"
+    priority: 4
+    version: "1.0.0"
+    description: "Customer management, orders, and quotations"
+    triggers:
+      - "order_confirmed"
+      - "order_shipped"
+      - "quotation_accepted"
+    dependencies:
+      - "inventory"
+    settings:
+      enable_quotations: true
+      default_payment_terms: 30
+
+  # Procurement Module - Purchasing and vendor management
+  - name: "procurement"
+    enabled: false
+    api_prefix: "procurement"
+    priority: 5
+    version: "1.0.0"
+    description: "Purchase orders, vendors, and receiving"
+    triggers:
+      - "purchase_order_created"
+      - "goods_received"
+      - "vendor_invoice_matched"
+    dependencies:
+      - "inventory"
+    settings:
+      auto_reorder_enabled: false
+      approval_threshold: 1000
+
+  # Manufacturing Module - Production management
+  - name: "manufacturing"
+    enabled: false
+    api_prefix: "manufacturing"
+    priority: 6
+    version: "1.0.0"
+    description: "Production orders, BOM, and work centers"
+    triggers:
+      - "production_started"
+      - "production_completed"
+      - "quality_check_passed"
+    dependencies:
+      - "inventory"
+      - "hr"
+    settings:
+      enable_quality_control: true
+      default_work_center: "MAIN"
+
+# Global Trigger Handlers
+trigger_handlers:
+  low_stock_alert:
+    - action: "notify"
+      target: "warehouse_manager"
+      channel: "email"
+    - action: "create_task"
+      target: "procurement"
+      task_type: "review_reorder"
+
+  stock_movement:
+    - action: "update_valuation"
+      target: "finance"
+      method: "fifo"
+    - action: "audit_log"
+      target: "core"
+      level: "info"
+
+  order_confirmed:
+    - action: "reserve_stock"
+      target: "inventory"
+      priority: "high"
+    - action: "generate_picking_list"
+      target: "warehouse"
+
+# Feature Flags
+features:
+  multi_currency: false
+  multi_warehouse: true
+  batch_tracking: true
+  serial_number_tracking: false
+  barcode_scanning: true
+  mobile_app_integration: false
+  api_rate_limiting: true
+  audit_logging: true
+
+# Performance Settings
+performance:
+  cache_enabled: true
+  cache_timeout: 300
+  async_tasks: false
+  batch_size: 100
+  max_concurrent_requests: 50
+
+# Security Settings
+security:
+  jwt_expiry_hours: 24
+  refresh_token_days: 7
+  password_min_length: 8
+  require_mfa: false
+  session_timeout_minutes: 60

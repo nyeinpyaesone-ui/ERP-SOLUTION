@@ -38,7 +38,7 @@ Your repository currently has **no variables**. You need to add these:
 ### Target Environment
 - **Environment Name**: `Docker`
 - **Trigger Branch**: `develop` only
-- **Image Tags**: 
+- **Image Tags**:
   - `dev-YYYYMMDD-SHA` (daily builds with commit SHA)
   - `develop` (latest develop branch)
 
@@ -95,10 +95,10 @@ docker.io/nyeinpyaesone-ui/erp-solution:dev-20250130-a1b2c3d
    ```
    Name: DOCKERHUB_USERNAME
    Value: nyeinpyaesone-ui
-   
+
    Name: POSTGRES_VERSION
    Value: 15
-   
+
    Name: REDIS_VERSION
    Value: 7
    ```
