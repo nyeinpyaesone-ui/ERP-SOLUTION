@@ -37,6 +37,7 @@ class CategorySerializer(serializers.ModelSerializer):
         read_only_fields = ["created_at"]
 
     def get_children_count(self, obj):
+        """Return the number of direct child categories."""
         return obj.children.count() if hasattr(obj, "children") else 0
 
 
@@ -129,6 +130,7 @@ class StockAdjustmentSerializer(serializers.Serializer):
     notes = serializers.CharField(required=False, allow_blank=True)
 
     def validate(self, data):
+        """Validate referenced records and stock for an adjustment."""
         # Validate product exists
         try:
             Product.objects.get(id=data["product_id"])
@@ -163,4 +165,5 @@ class StockAdjustmentSerializer(serializers.Serializer):
         return data
 
     def create(self, validated_data):
+        """Create a stock movement from validated adjustment data."""
         return StockMovement.objects.create(**validated_data)

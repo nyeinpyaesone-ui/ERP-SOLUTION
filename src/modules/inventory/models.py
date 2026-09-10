@@ -23,6 +23,7 @@ class Warehouse(models.Model):
         verbose_name_plural = "Warehouses"
 
     def __str__(self):
+        """Return the warehouse code and name."""
         return f"{self.code} - {self.name}"
 
 
@@ -41,6 +42,7 @@ class Category(models.Model):
         ordering = ["name"]
 
     def __str__(self):
+        """Return the category name."""
         return self.name
 
 
@@ -72,6 +74,7 @@ class Product(models.Model):
         ]
 
     def __str__(self):
+        """Return the product SKU and name."""
         return f"{self.sku} - {self.name}"
 
     @property
@@ -99,6 +102,7 @@ class StockLevel(models.Model):
         ordering = ["warehouse", "product"]
 
     def __str__(self):
+        """Return the product, warehouse, and current quantity."""
         return f"{self.product.sku} @ {self.warehouse.code}: {self.quantity}"
 
     @property
@@ -139,6 +143,7 @@ class StockMovement(models.Model):
         ]
 
     def __str__(self):
+        """Return the movement type, product SKU, and quantity."""
         return f"{self.movement_type}: {self.product.sku} ({self.quantity})"
 
     def save(self, *args, **kwargs):
