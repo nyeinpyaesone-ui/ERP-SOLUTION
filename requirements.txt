@@ -17,6 +17,9 @@ bcrypt>=4.1.2
 pydantic>=2.5.0
 marshmallow>=3.20.1
 
+# YAML Configuration (pinned for compatibility)
+PyYAML==6.0.1
+
 # Task Queue & Caching
 celery>=5.3.4
 redis>=5.0.1

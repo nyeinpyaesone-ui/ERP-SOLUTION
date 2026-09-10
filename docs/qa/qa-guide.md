@@ -6,9 +6,9 @@
 ```
         /\
        /  \      E2E Tests (10%)
-      /----\    
+      /----\
      /      \   Integration Tests (20%)
-    /--------\  
+    /--------\
    /          \ Unit Tests (70%)
   /------------\
 ```
@@ -98,7 +98,7 @@ pytest -k "inventory"
 [pytest]
 DJANGO_SETTINGS_MODULE = config.settings.test
 python_files = tests.py test_*.py *_tests.py
-addopts = 
+addopts =
     -v
     --strict-markers
     --tb=short
@@ -147,7 +147,7 @@ from src.inventory.models import Product
 class ProductFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = Product
-    
+
     name = factory.Sequence(lambda n: f"Product {n}")
     sku = factory.Sequence(lambda n: f"SKU-{n:04d}")
     price = factory.Faker('pydecimal', left_digits=3, right_digits=2, positive=True)
@@ -211,11 +211,11 @@ from locust import HttpUser, task, between
 
 class InventoryUser(HttpUser):
     wait_time = between(1, 3)
-    
+
     @task
     def view_products(self):
         self.client.get("/api/inventory/products/")
-    
+
     @task(3)
     def search_products(self):
         self.client.get("/api/inventory/products/search?q=laptop")

@@ -1,0 +1,72 @@
+# =============================================================================
+# Development Dependencies for Modular ERP System
+# =============================================================================
+# Install after production requirements: pip install -r requirements.txt
+# Then install dev dependencies: pip install -r requirements-dev.txt
+# =============================================================================
+
+# API Documentation
+drf-spectacular>=0.27.0
+drf-yasg>=1.21.8
+
+# Debugging & Profiling
+django-debug-toolbar>=4.2.0
+django-silk>=5.0.3
+
+# Database Tools
+django-dbbackup>=4.0.2
+django-redis>=5.4.0
+
+# Enhanced Testing
+pytest-xdist>=3.3.1          # Parallel test execution
+pytest-mock>=3.12.0          # Mocking utilities
+hypothesis>=6.92.0           # Property-based testing
+coverage[toml]>=7.3.2        # Extended coverage features
+
+# Security Scanning
+bandit>=1.7.6                # Security linter
+safety>=2.3.5                # Dependency vulnerability scanner
+
+# Code Formatting (additional)
+autoflake>=2.2.1             # Remove unused imports/variables
+pyupgrade>=3.15.0            # Upgrade syntax for newer Python versions
+
+# Type Checking Enhancement
+types-requests>=2.31.0.10
+types-PyYAML>=6.0.12.12
+types-redis>=4.6.0.10
+django-stubs>=4.2.7          # Django type stubs
+djangorestframework-stubs>=3.14.3  # DRF type stubs
+
+# Documentation Generation
+Sphinx>=7.2.6
+sphinx-rtd-theme>=2.0.0
+myst-parser>=2.0.0
+
+# Development Utilities
+watchdog>=3.0.0              # File system events
+ipython>=8.18.0              # Enhanced Python shell
+jupyter>=1.0.0               # Interactive notebooks for data analysis
+
+# Load Testing
+locust>=2.20.0               # Performance/load testing
+
+# Container Development
+docker>=7.0.0                # Docker SDK for Python
+docker-compose>=1.29.2
+
+# Environment Management
+pip-tools>=7.3.0             # Pin dependencies
+pipenv>=2023.11.5            # Alternative dependency management
+
+# Git Hooks Enhancement
+commitizen>=3.13.0           # Conventional commits
+pre-commit-hooks>=4.5.0      # Additional pre-commit hooks
+
+# Monitoring & APM (Development)
+opentelemetry-api>=1.21.0
+opentelemetry-sdk>=1.21.0
+opentelemetry-instrumentation-django>=0.42b0
+
+# Email Testing (for development)
+# mailpit>=1.0.0               # Email testing tool (Removed: Use Docker instead)

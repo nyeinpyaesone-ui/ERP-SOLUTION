@@ -14,9 +14,7 @@ User = get_user_model()
 def sample_user(db):
     """Create a sample user for testing."""
     return User.objects.create_user(
-        username='testuser',
-        email='test@example.com',
-        password='testpassword123'
+        username="testuser", email="test@example.com", password="testpassword123"
     )
 
 
@@ -24,9 +22,7 @@ def sample_user(db):
 def sample_superuser(db):
     """Create a sample superuser for testing."""
     return User.objects.create_superuser(
-        username='admin',
-        email='admin@example.com',
-        password='adminpassword123'
+        username="admin", email="admin@example.com", password="adminpassword123"
     )
 
 
@@ -34,6 +30,7 @@ def sample_superuser(db):
 def api_client():
     """Return an API client instance."""
     from rest_framework.test import APIClient
+
     return APIClient()
 
 
