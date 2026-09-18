@@ -57,7 +57,6 @@ class ModuleLoader:
     _config_path: Optional[Path] = None
 
     def __new__(cls) -> "ModuleLoader":
-        """Return the shared module loader instance."""
         if cls._instance is None:
             cls._instance = super(ModuleLoader, cls).__new__(cls)
         return cls._instance
