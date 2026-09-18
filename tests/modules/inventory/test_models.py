@@ -16,24 +16,29 @@ class TestWarehouseModel:
 
     @pytest.fixture
     def warehouse(self, db):
+        """Create a warehouse for model tests."""
         return Warehouse.objects.create(
             name="Main Warehouse", code="WH001", address="123 Storage St"
         )
 
     def test_create_warehouse(self, warehouse):
+        """Verify warehouse fields and defaults are persisted."""
         assert warehouse.name == "Main Warehouse"
         assert warehouse.code == "WH001"
         assert warehouse.is_active is True
 
     def test_warehouse_str_representation(self, warehouse):
+        """Verify the warehouse string representation."""
         assert str(warehouse) == "WH001 - Main Warehouse"
 
     def test_warehouse_unique_code(self, db):
+        """Reject duplicate warehouse codes."""
         Warehouse.objects.create(name="Warehouse 1", code="WH002")
         with pytest.raises(IntegrityError):
             Warehouse.objects.create(name="Warehouse 2", code="WH002")
 
     def test_warehouse_ordering(self, db):
+        """Order warehouses by name."""
         wh1 = Warehouse.objects.create(name="Z Warehouse", code="WH003")
         wh2 = Warehouse.objects.create(name="A Warehouse", code="WH004")
 
@@ -48,18 +53,22 @@ class TestCategoryModel:
 
     @pytest.fixture
     def category(self, db):
+        """Create a category for model tests."""
         return Category.objects.create(
             name="Electronics", description="Electronic devices and accessories"
         )
 
     def test_create_category(self, category):
+        """Verify category fields and defaults are persisted."""
         assert category.name == "Electronics"
         assert category.parent is None
 
     def test_category_str_representation(self, category):
+        """Verify the category string representation."""
         assert str(category) == "Electronics"
 
     def test_nested_categories(self, db, category):
+        """Link child categories to their parent."""
         child = Category.objects.create(name="Smartphones", parent=category)
 
         assert child.parent == category
@@ -72,10 +81,12 @@ class TestProductModel:
 
     @pytest.fixture
     def category(self, db):
+        """Create a category for product tests."""
         return Category.objects.create(name="Test Category")
 
     @pytest.fixture
     def product(self, db, category):
+        """Create a product for model tests."""
         return Product.objects.create(
             sku="PROD001",
             name="Test Product",
@@ -86,14 +97,17 @@ class TestProductModel:
         )
 
     def test_create_product(self, product):
+        """Verify product fields and defaults are persisted."""
         assert product.sku == "PROD001"
         assert product.unit_price == 99.99
         assert product.is_active is True
 
     def test_product_str_representation(self, product):
+        """Verify the product string representation."""
         assert str(product) == "PROD001 - Test Product"
 
     def test_product_unique_sku(self, db, category):
+        """Reject duplicate product SKUs."""
         Product.objects.create(
             sku="PROD002", name="Another Product", category=category, unit_price=49.99
         )
@@ -103,9 +117,11 @@ class TestProductModel:
             )
 
     def test_product_total_stock_empty(self, db, product):
+        """Report zero stock when a product has no stock levels."""
         assert product.total_stock == 0
 
     def test_product_total_stock_with_levels(self, db, product):
+        """Sum product stock across warehouses."""
         warehouse1 = Warehouse.objects.create(name="WH1", code="WH1")
         warehouse2 = Warehouse.objects.create(name="WH2", code="WH2")
 
@@ -121,6 +137,7 @@ class TestStockLevelModel:
 
     @pytest.fixture
     def setup_stock(self, db):
+        """Create related inventory records for stock-level tests."""
         warehouse = Warehouse.objects.create(name="Test WH", code="TWH")
         category = Category.objects.create(name="Test Cat")
         product = Product.objects.create(
@@ -132,14 +149,17 @@ class TestStockLevelModel:
         return {"stock": stock, "product": product, "warehouse": warehouse}
 
     def test_create_stock_level(self, setup_stock):
+        """Verify stock quantities are persisted."""
         stock = setup_stock["stock"]
         assert stock.quantity == 100
         assert stock.reserved_quantity == 20
 
     def test_available_quantity(self, setup_stock):
+        """Subtract reserved stock from the total quantity."""
         assert setup_stock["stock"].available_quantity == 80
 
     def test_stock_level_unique_constraint(self, db, setup_stock):
+        """Reject duplicate product and warehouse stock levels."""
         with pytest.raises(IntegrityError):
             StockLevel.objects.create(
                 product=setup_stock["product"],
@@ -148,6 +168,7 @@ class TestStockLevelModel:
             )
 
     def test_stock_level_str_representation(self, setup_stock):
+        """Verify the stock-level string representation."""
         stock = setup_stock["stock"]
         expected = f"{stock.product.sku} @ {stock.warehouse.code}: {stock.quantity}"
         assert str(stock) == expected
@@ -159,6 +180,7 @@ class TestStockMovementModel:
 
     @pytest.fixture
     def setup_movement(self, db):
+        """Create related inventory records for movement tests."""
         warehouse = Warehouse.objects.create(name="Test WH", code="TWH")
         category = Category.objects.create(name="Test Cat")
         product = Product.objects.create(
@@ -167,6 +189,7 @@ class TestStockMovementModel:
         return {"product": product, "warehouse": warehouse}
 
     def test_stock_in_movement(self, db, setup_movement):
+        """Increase stock for inbound movements."""
         movement = StockMovement.objects.create(
             product=setup_movement["product"],
             warehouse=setup_movement["warehouse"],
@@ -185,6 +208,7 @@ class TestStockMovementModel:
         assert stock_level.quantity == 50
 
     def test_stock_out_movement(self, db, setup_movement):
+        """Decrease stock for outbound movements."""
         # First add stock
         StockLevel.objects.create(
             product=setup_movement["product"],
@@ -206,6 +230,7 @@ class TestStockMovementModel:
         assert stock_level.quantity == 70
 
     def test_adjustment_movement(self, db, setup_movement):
+        """Set stock to the quantity supplied by an adjustment."""
         StockLevel.objects.create(
             product=setup_movement["product"],
             warehouse=setup_movement["warehouse"],
@@ -226,6 +251,7 @@ class TestStockMovementModel:
         assert stock_level.quantity == 85
 
     def test_movement_str_representation(self, db, setup_movement):
+        """Verify the stock-movement string representation."""
         movement = StockMovement.objects.create(
             product=setup_movement["product"],
             warehouse=setup_movement["warehouse"],

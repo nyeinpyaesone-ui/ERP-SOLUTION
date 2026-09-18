@@ -62,6 +62,7 @@ class ModuleLoader:
         return cls._instance
 
     def __init__(self) -> None:
+        """Load module configuration once for the shared instance."""
         if self._modules:
             return
 

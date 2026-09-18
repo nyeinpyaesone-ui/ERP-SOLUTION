@@ -48,6 +48,7 @@ class ModuleSignalHandler:
     """
 
     def __init__(self) -> None:
+        """Initialize custom handlers and connect the default receivers."""
         self._registered_handlers: Dict[str, List[Any]] = {}
         self._connect_default_handlers()
 

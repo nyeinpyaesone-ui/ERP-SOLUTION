@@ -23,11 +23,13 @@ class TestWarehouseSerializer:
 
     @pytest.fixture
     def warehouse(self, db):
+        """Create a warehouse for serializer tests."""
         return Warehouse.objects.create(
             name="Test Warehouse", code="TWH001", address="123 Test St"
         )
 
     def test_warehouse_serializer_fields(self, warehouse):
+        """Expose the expected warehouse fields."""
         serializer = WarehouseSerializer(warehouse)
         data = serializer.data
 
@@ -40,6 +42,7 @@ class TestWarehouseSerializer:
         assert data["code"] == "TWH001"
 
     def test_warehouse_serializer_create(self, db):
+        """Create a warehouse from valid serialized data."""
         data = {"name": "New Warehouse", "code": "NWH001", "address": "456 New St"}
         serializer = WarehouseSerializer(data=data)
         assert serializer.is_valid()
@@ -53,11 +56,13 @@ class TestCategorySerializer:
 
     @pytest.fixture
     def category(self, db):
+        """Create a category for serializer tests."""
         return Category.objects.create(
             name="Electronics", description="Electronic items"
         )
 
     def test_category_serializer_fields(self, category):
+        """Expose the expected category fields."""
         serializer = CategorySerializer(category)
         data = serializer.data
 
@@ -68,6 +73,7 @@ class TestCategorySerializer:
         assert data["name"] == "Electronics"
 
     def test_category_serializer_with_children(self, db, category):
+        """Report the number of direct child categories."""
         child = Category.objects.create(name="Phones", parent=category)
         serializer = CategorySerializer(category)
         data = serializer.data
@@ -80,10 +86,12 @@ class TestProductSerializer:
 
     @pytest.fixture
     def category(self, db):
+        """Create a category for product serializer tests."""
         return Category.objects.create(name="Test Category")
 
     @pytest.fixture
     def product(self, db, category):
+        """Create a product for serializer tests."""
         return Product.objects.create(
             sku="PRD001",
             name="Test Product",
@@ -93,6 +101,7 @@ class TestProductSerializer:
         )
 
     def test_product_serializer_fields(self, product):
+        """Expose the expected product fields."""
         serializer = ProductSerializer(product)
         data = serializer.data
 
@@ -106,6 +115,7 @@ class TestProductSerializer:
         assert data["name"] == "Test Product"
 
     def test_product_serializer_total_stock(self, db, product):
+        """Include the product's total stock."""
         warehouse = Warehouse.objects.create(name="WH1", code="WH1")
         StockLevel.objects.create(product=product, warehouse=warehouse, quantity=50)
 
@@ -120,6 +130,7 @@ class TestStockLevelSerializer:
 
     @pytest.fixture
     def setup_stock(self, db):
+        """Create related records for stock-level serializer tests."""
         warehouse = Warehouse.objects.create(name="Test WH", code="TWH")
         category = Category.objects.create(name="Test Cat")
         product = Product.objects.create(
@@ -131,6 +142,7 @@ class TestStockLevelSerializer:
         return {"stock": stock, "product": product, "warehouse": warehouse}
 
     def test_stock_level_serializer_fields(self, setup_stock):
+        """Expose the expected stock-level fields."""
         serializer = StockLevelSerializer(setup_stock["stock"])
         data = serializer.data
 
@@ -144,6 +156,7 @@ class TestStockLevelSerializer:
         assert "warehouse_name" in data
 
     def test_stock_level_available_quantity(self, setup_stock):
+        """Include the stock level's available quantity."""
         serializer = StockLevelSerializer(setup_stock["stock"])
         data = serializer.data
         assert data["available_quantity"] == 80
@@ -155,6 +168,7 @@ class TestStockMovementSerializer:
 
     @pytest.fixture
     def setup_movement(self, db):
+        """Create related records for movement serializer tests."""
         warehouse = Warehouse.objects.create(name="Test WH", code="TWH")
         category = Category.objects.create(name="Test Cat")
         product = Product.objects.create(
@@ -172,6 +186,7 @@ class TestStockMovementSerializer:
         return {"movement": movement, "product": product, "warehouse": warehouse}
 
     def test_stock_movement_serializer_fields(self, setup_movement):
+        """Expose the expected stock-movement fields."""
         serializer = StockMovementSerializer(setup_movement["movement"])
         data = serializer.data
 
@@ -194,6 +209,7 @@ class TestStockAdjustmentSerializer:
 
     @pytest.fixture
     def setup_data(self, db):
+        """Create references for stock-adjustment serializer tests."""
         warehouse = Warehouse.objects.create(name="Test WH", code="TWH")
         category = Category.objects.create(name="Test Cat")
         product = Product.objects.create(
@@ -207,6 +223,7 @@ class TestStockAdjustmentSerializer:
         }
 
     def test_adjustment_serializer_valid_in(self, db, setup_data):
+        """Accept a valid inbound stock adjustment."""
         data = {
             "product_id": setup_data["product_id"],
             "warehouse_id": setup_data["warehouse_id"],
@@ -219,6 +236,7 @@ class TestStockAdjustmentSerializer:
         assert serializer.is_valid(), serializer.errors
 
     def test_adjustment_serializer_invalid_product(self, setup_data):
+        """Reject an adjustment for an unknown product."""
         data = {
             "product_id": 99999,
             "warehouse_id": setup_data["warehouse_id"],
@@ -230,6 +248,7 @@ class TestStockAdjustmentSerializer:
         assert "product_id" in serializer.errors
 
     def test_adjustment_serializer_invalid_warehouse(self, setup_data):
+        """Reject an adjustment for an unknown warehouse."""
         data = {
             "product_id": setup_data["product_id"],
             "warehouse_id": 99999,
@@ -241,6 +260,7 @@ class TestStockAdjustmentSerializer:
         assert "warehouse_id" in serializer.errors
 
     def test_adjustment_serializer_insufficient_stock(self, db, setup_data):
+        """Reject an outbound adjustment without sufficient stock."""
         # Try to remove stock when none exists
         data = {
             "product_id": setup_data["product_id"],
