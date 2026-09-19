@@ -1,0 +1,35 @@
+{
+  "name": "rl-prefix-wired-framework",
+  "version": "1.0.0",
+  "description": "Prefix Wired Asynchronous Reinforcement Learning Framework with Submodule Backfill Integration",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js",
+    "train": "node src/runner.js train",
+    "evaluate": "node src/runner.js evaluate",
+    "backfill": "node src/workflows/backfill.js",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
+    "test:coverage": "node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage",
+    "lint": "eslint src/",
+    "build": "node src/build.js"
+  },
+  "keywords": [
+    "reinforcement-learning",
+    "async",
+    "prefix-wired",
+    "submodules",
+    "backfill",
+    "events",
+    "workflows"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "eventemitter3": "^5.0.1"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "eslint": "^8.57.0"
+  }
+}
