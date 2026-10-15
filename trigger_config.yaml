@@ -22,7 +22,7 @@ modules:
     version: "1.0.0"
     description: "Warehouse, products, and stock management"
     triggers:
-      - "stock_movement"
+      - "stock_movement_completed"
       - "low_stock_alert"
       - "stock_adjustment"
     dependencies: []
@@ -126,7 +126,7 @@ trigger_handlers:
       target: "procurement"
       task_type: "review_reorder"
 
-  stock_movement:
+  stock_movement_completed:
     - action: "update_valuation"
       target: "finance"
       method: "fifo"

@@ -76,8 +76,7 @@ class ModuleLoader:
             / "trigger_config.yaml",  # Original (when BASE_DIR is /workspace/src)
             Path(settings.BASE_DIR)
             / "trigger_config.yaml",  # Alternative (when BASE_DIR is /workspace)
-            Path(__file__).parent.parent.parent
-            / "trigger_config.yaml",  # Relative to this file
+            Path(__file__).parent.parent.parent / "trigger_config.yaml",  # Relative to this file
         ]
 
         config_path = None
@@ -119,17 +118,11 @@ class ModuleLoader:
     def _load_defaults(self) -> None:
         """Load default module configuration."""
         default_modules = [
-            ModuleConfig(
-                name="inventory", enabled=True, api_prefix="inventory", priority=1
-            ),
+            ModuleConfig(name="inventory", enabled=True, api_prefix="inventory", priority=1),
             ModuleConfig(name="hr", enabled=False, api_prefix="hr", priority=2),
-            ModuleConfig(
-                name="finance", enabled=False, api_prefix="finance", priority=3
-            ),
+            ModuleConfig(name="finance", enabled=False, api_prefix="finance", priority=3),
             ModuleConfig(name="sales", enabled=False, api_prefix="sales", priority=4),
-            ModuleConfig(
-                name="procurement", enabled=False, api_prefix="procurement", priority=5
-            ),
+            ModuleConfig(name="procurement", enabled=False, api_prefix="procurement", priority=5),
             ModuleConfig(
                 name="manufacturing",
                 enabled=False,
@@ -191,7 +184,14 @@ class ModuleLoader:
         return mod.triggers if mod else []
 
     def enable_module(self, name: str) -> bool:
-        """Enable a module dynamically."""
+        """Enable a module dynamically.
+
+        NOTE: this only affects the in-memory configuration (triggers, API
+        prefix lookups, etc.). It does NOT add the app to Django's INSTALLED_APPS
+        or register its URL patterns — both are frozen at settings-import /
+        URLconf time. Enabling a previously disabled module at runtime requires
+        a process restart (or reload_config() at boot).
+        """
         mod = self._modules.get(name)
         if mod and mod.is_ready:
             mod.enabled = True
@@ -199,7 +199,11 @@ class ModuleLoader:
         return False
 
     def disable_module(self, name: str) -> bool:
-        """Disable a module dynamically."""
+        """Disable a module dynamically.
+
+        Same caveat as enable_module(): already-registered apps/URLs remain
+        reachable until the process is restarted.
+        """
         mod = self._modules.get(name)
         if mod:
             mod.enabled = False
@@ -207,7 +211,13 @@ class ModuleLoader:
         return False
 
     def reload_config(self) -> None:
-        """Reload configuration from YAML file."""
+        """Reload configuration from YAML file.
+
+        Restores the pristine state defined on disk, discarding any runtime
+        enable_module()/disable_module() mutations. This makes the shared
+        singleton safe for tests: call it in teardown to avoid leaking state
+        between tests.
+        """
         self._modules.clear()
         self._load_config()
 

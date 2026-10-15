@@ -2,32 +2,22 @@
 Pytest Configuration and Fixtures
 ==================================
 Global test configuration, fixtures, and settings.
-"""
-import os
 
-import pytest
+Note: the canonical user fixtures live in ``tests/fixtures.py`` (imported
+below so they are available to every test). The dict-returning versions
+that previously shadowed them here were removed because tests expect real
+``User`` instances.
+"""
+
+import os
 
 # Configure Django settings before importing models
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings.test")
 
-
-@pytest.fixture
-def sample_user():
-    """Create a sample user for testing."""
-    return {
-        "username": "testuser",
-        "email": "test@example.com",
-        "is_staff": False,
-        "is_superuser": False,
-    }
-
-
-@pytest.fixture
-def admin_user():
-    """Create an admin user for testing."""
-    return {
-        "username": "admin",
-        "email": "admin@example.com",
-        "is_staff": True,
-        "is_superuser": True,
-    }
+# Re-export shared fixtures for automatic discovery by pytest.
+from tests.fixtures import (  # noqa: E402,F401
+    api_client,
+    authenticated_client,
+    sample_superuser,
+    sample_user,
+)

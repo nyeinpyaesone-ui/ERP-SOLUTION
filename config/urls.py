@@ -4,17 +4,16 @@ URL Configuration for ERP System
 Dynamic URL routing based on module configuration.
 """
 
-from typing import TYPE_CHECKING, Any, Optional
+from typing import Any, Optional
 
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
 
-if TYPE_CHECKING:
-    from src.core.module_loader import ModuleLoader
-
-# Import dynamic module loader
+# Import dynamic module loader (kept available for programmatic inspection;
+# URL registration intentionally goes through src/api/urls.py only — see the
+# note below urlpatterns).
 try:
     from src.core.module_loader import module_loader as _module_loader
 
@@ -25,24 +24,14 @@ except ImportError:
 urlpatterns = [
     # Admin interface
     path("admin/", admin.site.urls),
-    # API endpoints
+    # API endpoints (module routes are registered here; see src/api/urls.py)
     path("api/", include("src.api.urls")),
 ]
 
-# Dynamically add module URLs if loader is available
-if module_loader:
-    try:
-        url_patterns = module_loader.get_urls_patterns()
-        for path_prefix, urlconf_module, namespace in url_patterns:
-            urlpatterns.append(
-                path(
-                    path_prefix,
-                    include((urlconf_module, namespace), namespace=namespace),
-                )
-            )
-    except Exception as e:
-        if settings.DEBUG:
-            print(f"Warning: Failed to load dynamic URLs: {e}")
+# NOTE: Module URLs are wired through src/api/urls.py only. The dynamic
+# module loader's get_urls_patterns() would register the same routes a
+# second time under conflicting namespaces, so it is intentionally not
+# used for URL registration here.
 
 # Serve static files in development
 if settings.DEBUG:

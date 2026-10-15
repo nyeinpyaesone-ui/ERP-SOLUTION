@@ -35,6 +35,27 @@ payment_processed = Signal()
 invoice_generated = Signal()
 order_completed = Signal()
 
+# Registry mapping declared signal names to their Signal objects. Used by
+# ModuleSignalHandler.register_handler to derive stable trigger keys that
+# match execute_triggered_actions()'s "<trigger>_<module>" lookup format.
+_SIGNAL_REGISTRY: Dict[str, Signal] = {
+    "module_initialized": module_initialized,
+    "module_enabled": module_enabled,
+    "module_disabled": module_disabled,
+    "record_created": record_created,
+    "record_updated": record_updated,
+    "record_deleted": record_deleted,
+    "record_restored": record_restored,
+    "low_stock_alert": low_stock_alert,
+    "stock_movement_completed": stock_movement_completed,
+    "approval_required": approval_required,
+    "approval_granted": approval_granted,
+    "approval_rejected": approval_rejected,
+    "payment_processed": payment_processed,
+    "invoice_generated": invoice_generated,
+    "order_completed": order_completed,
+}
+
 
 class ModuleSignalHandler:
     """
@@ -62,37 +83,72 @@ class ModuleSignalHandler:
 
     def register_handler(
         self,
-        signal: Signal,
+        signal,
         handler: Any,
         module_name: Optional[str] = None,
         priority: int = 0,
+        trigger_name: Optional[str] = None,
     ) -> None:
         """
         Register a custom signal handler.
 
+        Accepts either a Django ``Signal`` object or its declared name
+        (e.g. ``"stock_movement_completed"``); when a name is given it is
+        resolved through ``_SIGNAL_REGISTRY``.
+
         Args:
-            signal: The Django Signal to handle
+            signal: The Django Signal (or its registered name) to handle
             handler: The callable to execute
-            module_name: Optional module name for filtering
+            module_name: Optional module name for filtering and trigger keys
             priority: Handler priority (higher = executed first)
+            trigger_name: Optional trigger name; defaults to the signal's
+                global name so ``execute_triggered_actions`` can find it.
         """
-        key = f"{signal.name}_{module_name or 'global'}"
+        # Allow callers to pass the signal by name as well as by object.
+        if isinstance(signal, str):
+            trigger_name = trigger_name or signal
+            signal = _SIGNAL_REGISTRY[signal]
 
-        if key not in self._registered_handlers:
-            self._registered_handlers[key] = []
+        # Resolve the signal's declared global name (e.g. "low_stock_alert")
+        # from the module-level registry so trigger lookups stay stable.
+        if trigger_name is None:
+            trigger_name = next(
+                (n for n, s in _SIGNAL_REGISTRY.items() if s is signal),
+                str(id(signal)),
+            )
 
-        self._registered_handlers[key].append(
-            {"handler": handler, "priority": priority, "module": module_name}
-        )
+        # Registry key must match execute_triggered_actions(): "<trigger>_<module>".
+        key = f"{trigger_name}_{module_name}"
+        entries = self._registered_handlers.setdefault(key, [])
+        # Replace any previous registration of the same handler so
+        # re-registering never duplicates entries or double-connects.
+        entries[:] = [e for e in entries if e["handler"] is not handler]
+        entries.append({"handler": handler, "priority": priority, "module": module_name})
+        # Django dispatches receivers in connection order, so emulate
+        # "higher priority = executed first" by sorting before connecting.
+        entries.sort(key=lambda x: x["priority"], reverse=True)
 
-        # Sort by priority (descending)
-        self._registered_handlers[key].sort(key=lambda x: x["priority"], reverse=True)
+        # Disconnect first so re-registering never double-connects a handler.
+        # dispatch_uid alone identifies the connection (passing ``sender`` to
+        # disconnect() would filter by sender and fail to remove a receiver
+        # connected without one).
+        # Note: passing dispatch_uid makes Django store a strong reference to
+        # the receiver (Django 4.0+ removed the ``weakref`` connect() kwarg).
+        signal.disconnect(dispatch_uid=self._dispatch_uid(signal, handler))
+        signal.connect(handler, dispatch_uid=self._dispatch_uid(signal, handler))
 
-        signal.connect(handler)
+    @staticmethod
+    def _dispatch_uid(signal: Signal, handler: Any) -> str:
+        """Stable unique id for a (signal, handler) connection."""
+        return f"{id(signal)}:{getattr(handler, '__qualname__', str(handler))}"
 
-    def unregister_handler(self, signal: Signal, handler: Any) -> None:
-        """Unregister a signal handler."""
-        signal.disconnect(handler)
+    def unregister_handler(self, signal, handler: Any) -> None:
+        """Unregister a signal handler (accepts a Signal object or its name)."""
+        if isinstance(signal, str):
+            signal = _SIGNAL_REGISTRY[signal]
+        signal.disconnect(dispatch_uid=self._dispatch_uid(signal, handler))
+        for entries in self._registered_handlers.values():
+            entries[:] = [e for e in entries if e["handler"] is not handler]
 
     def emit_event(
         self,
@@ -169,9 +225,7 @@ class ModuleSignalHandler:
     # Default Signal Handlers
     # -------------------------------------------------------------------------
 
-    def _on_record_created(
-        self, sender: Model, instance: Model, created: bool, **kwargs
-    ) -> None:
+    def _on_record_created(self, sender: Model, instance: Model, created: bool, **kwargs) -> None:
         """Handle record creation events."""
         if created:
             # Auto-audit logging could be added here
@@ -224,12 +278,15 @@ class ModuleSignalHandler:
         - Finance module: Update inventory valuation
         - Sales module: Confirm order fulfillment
         """
-        if self.check_trigger("inventory", "stock_movement"):
+        # Trigger name must match the signal name declared in
+        # trigger_config.yaml ("stock_movement_completed"); the previous
+        # "stock_movement" key never matched any configured trigger.
+        if self.check_trigger("inventory", "stock_movement_completed"):
             context = {
                 "movement": movement,
                 "movement_type": movement_type,
             }
-            self.execute_triggered_actions("inventory", "stock_movement", context)
+            self.execute_triggered_actions("inventory", "stock_movement_completed", context)
 
 
 # Global signal handler instance

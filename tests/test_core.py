@@ -2,11 +2,8 @@
 Test for core module - Module Loader, Base Model, and Signals
 """
 
-from datetime import timedelta
-
 import pytest
 from django.contrib.auth import get_user_model
-from django.utils import timezone
 
 User = get_user_model()
 
@@ -99,12 +96,10 @@ def test_signal_handler_check_trigger():
 
     # Inventory module has these triggers defined in trigger_config.yaml
     assert signal_handler.check_trigger("inventory", "low_stock_alert") is True
-    assert signal_handler.check_trigger("inventory", "stock_movement") is True
+    assert signal_handler.check_trigger("inventory", "stock_movement_completed") is True
     # HR is disabled, so check_trigger returns None (module not loaded)
     result = signal_handler.check_trigger("hr", "employee_onboarded")
-    assert (
-        result is False or result is None
-    )  # Either is acceptable for disabled modules
+    assert result is False or result is None  # Either is acceptable for disabled modules
 
 
 @pytest.mark.unit
@@ -134,6 +129,45 @@ def test_signal_handler_execute_triggered_actions(db):
 
 
 @pytest.mark.unit
+def test_signal_handler_register_unregister_priority():
+    """register_handler accepts signals by name, honors priority, and
+    re-registering never duplicates; unregister removes the entry."""
+    from src.core.signals import ModuleSignalHandler
+
+    handler = ModuleSignalHandler()
+    calls = []
+
+    def low(sender=None, **kwargs):
+        calls.append("low")
+
+    def high(sender=None, **kwargs):
+        calls.append("high")
+
+    try:
+        handler.register_handler(
+            "stock_movement_completed", low, module_name="inventory", priority=1
+        )
+        handler.register_handler(
+            "stock_movement_completed", high, module_name="inventory", priority=9
+        )
+        # Re-registering the same handler must not duplicate the entry.
+        handler.register_handler(
+            "stock_movement_completed", low, module_name="inventory", priority=1
+        )
+
+        handler.execute_triggered_actions("inventory", "stock_movement_completed", {})
+        assert calls == ["high", "low"]  # higher priority executed first
+
+        calls.clear()
+        handler.unregister_handler("stock_movement_completed", high)
+        handler.execute_triggered_actions("inventory", "stock_movement_completed", {})
+        assert calls == ["low"]
+    finally:
+        handler.unregister_handler("stock_movement_completed", low)
+        handler.unregister_handler("stock_movement_completed", high)
+
+
+@pytest.mark.unit
 def test_core_module_imports():
     """Test that core module can be imported."""
     from src import core
@@ -159,6 +193,28 @@ def test_module_loader_reload():
 
     # Inventory should still be loaded
     assert module_loader.get_module("inventory") is not None
+
+
+@pytest.mark.unit
+def test_module_loader_enable_disable_restores_via_reload():
+    """Runtime enable/disable mutates the singleton; reload_config() must
+    restore the pristine on-disk state (no leaked state between tests)."""
+    from src.core.module_loader import module_loader
+
+    original = module_loader.enabled_count
+
+    # Disable an enabled module at runtime.
+    assert module_loader.disable_module("inventory") is True
+    assert module_loader.get_module("inventory").enabled is False
+
+    # reload_config() restores the YAML-defined state.
+    module_loader.reload_config()
+    inv = module_loader.get_module("inventory")
+    assert inv is not None and inv.enabled is True
+    assert module_loader.enabled_count == original
+
+    # Enabling an unknown module fails cleanly.
+    assert module_loader.enable_module("does_not_exist") is False
 
 
 @pytest.mark.unit

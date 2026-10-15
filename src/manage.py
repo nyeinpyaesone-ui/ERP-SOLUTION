@@ -7,6 +7,13 @@ import sys
 
 def main():
     """Run administrative tasks."""
+    # The settings package (config/) lives at the repository root, one level
+    # above src/ where manage.py resides. Ensure it is importable regardless
+    # of how/where this script is invoked.
+    repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    if repo_root not in sys.path:
+        sys.path.insert(0, repo_root)
+
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings.development")
     try:
         from django.core.management import execute_from_command_line

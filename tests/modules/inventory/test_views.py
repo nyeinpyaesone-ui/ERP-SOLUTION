@@ -3,16 +3,12 @@ Unit Tests for Inventory Views
 ================================
 Tests for all inventory API viewsets.
 """
+
 import pytest
 from rest_framework import status
-from rest_framework.test import APIClient, APIRequestFactory
+from rest_framework.test import APIClient
 
-from src.modules.inventory.models import (Category, Product, StockLevel,
-                                          StockMovement, Warehouse)
-from src.modules.inventory.views import (CategoryViewSet, ProductViewSet,
-                                         StockLevelViewSet,
-                                         StockMovementViewSet,
-                                         WarehouseViewSet)
+from src.modules.inventory.models import Category, Product, StockLevel, StockMovement, Warehouse
 
 
 @pytest.mark.unit
@@ -20,8 +16,10 @@ class TestWarehouseViewSet:
     """Test cases for WarehouseViewSet."""
 
     @pytest.fixture
-    def api_client(self):
-        return APIClient()
+    def api_client(self, staff_user):
+        client = APIClient()
+        client.force_authenticate(user=staff_user)
+        return client
 
     @pytest.fixture
     def warehouses(self, db):
@@ -67,8 +65,10 @@ class TestProductViewSet:
     """Test cases for ProductViewSet."""
 
     @pytest.fixture
-    def api_client(self):
-        return APIClient()
+    def api_client(self, staff_user):
+        client = APIClient()
+        client.force_authenticate(user=staff_user)
+        return client
 
     @pytest.fixture
     def category(self, db):
@@ -112,9 +112,7 @@ class TestProductViewSet:
         warehouse = Warehouse.objects.create(name="WH1", code="WH1")
         StockLevel.objects.create(product=product, warehouse=warehouse, quantity=50)
 
-        response = api_client.get(
-            f"/api/inventory/products/{product.id}/stock_summary/"
-        )
+        response = api_client.get(f"/api/inventory/products/{product.id}/stock_summary/")
         assert response.status_code == status.HTTP_200_OK
         assert response.data["total_stock"] == 50
         assert "warehouses" in response.data
@@ -125,8 +123,10 @@ class TestStockLevelViewSet:
     """Test cases for StockLevelViewSet."""
 
     @pytest.fixture
-    def api_client(self):
-        return APIClient()
+    def api_client(self, staff_user):
+        client = APIClient()
+        client.force_authenticate(user=staff_user)
+        return client
 
     @pytest.fixture
     def setup_stock(self, db):
@@ -175,8 +175,10 @@ class TestStockMovementViewSet:
     """Test cases for StockMovementViewSet."""
 
     @pytest.fixture
-    def api_client(self):
-        return APIClient()
+    def api_client(self, staff_user):
+        client = APIClient()
+        client.force_authenticate(user=staff_user)
+        return client
 
     @pytest.fixture
     def setup_movement(self, db):
@@ -217,3 +219,66 @@ class TestStockMovementViewSet:
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data["quantity"] == 100
         assert response.data["reference"] == "ADJ001"
+
+
+@pytest.mark.unit
+class TestInventoryPermissions:
+    """Role-based access control for inventory endpoints."""
+
+    @pytest.fixture
+    def client_as_regular_user(self, regular_user):
+        client = APIClient()
+        client.force_authenticate(user=regular_user)
+        return client
+
+    @pytest.fixture
+    def warehouse(self, db):
+        return Warehouse.objects.create(name="WH1", code="WH001")
+
+    def test_anonymous_cannot_read(self, db, warehouse):
+        response = APIClient().get("/api/inventory/warehouses/")
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    def test_regular_user_can_read(self, db, client_as_regular_user, warehouse):
+        response = client_as_regular_user.get("/api/inventory/warehouses/")
+        assert response.status_code == status.HTTP_200_OK
+
+    def test_regular_user_cannot_write_master_data(self, db, client_as_regular_user):
+        data = {"name": "New Warehouse", "code": "NWH001"}
+        response = client_as_regular_user.post("/api/inventory/warehouses/", data)
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert not Warehouse.objects.filter(code="NWH001").exists()
+
+    def test_regular_user_cannot_adjust_stock(self, db, client_as_regular_user, warehouse):
+        category = Category.objects.create(name="Cat")
+        product = Product.objects.create(sku="PERM001", name="P", category=category, unit_price=1)
+        data = {
+            "product_id": product.id,
+            "warehouse_id": warehouse.id,
+            "movement_type": "IN",
+            "quantity": 5,
+        }
+        response = client_as_regular_user.post("/api/inventory/stock-movements/adjust_stock/", data)
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_staff_user_can_create_movement(self, db, staff_user, warehouse):
+        category = Category.objects.create(name="Cat")
+        product = Product.objects.create(sku="PERM002", name="P", category=category, unit_price=1)
+        client = APIClient()
+        client.force_authenticate(user=staff_user)
+        response = client.post(
+            "/api/inventory/stock-movements/",
+            {
+                "product": product.id,
+                "warehouse": warehouse.id,
+                "movement_type": "IN",
+                "quantity": 5,
+                "performed_by": "ignored",
+            },
+        )
+        assert response.status_code == status.HTTP_201_CREATED
+        # performed_by is read-only in the serializer; audit spoofing ignored
+        movement = StockMovement.objects.get(pk=response.data["id"])
+        assert movement.performed_by != "ignored"
+        # and the acting user is stamped server-side instead
+        assert movement.performed_by == staff_user.get_username()

@@ -4,6 +4,8 @@ Inventory Management Serializers
 DRF serializers for inventory models.
 """
 
+from django.core.exceptions import ValidationError as DjangoValidationError
+from django.db import transaction
 from rest_framework import serializers
 
 from .models import Category, Product, StockLevel, StockMovement, Warehouse
@@ -44,7 +46,7 @@ class CategorySerializer(serializers.ModelSerializer):
 class ProductSerializer(serializers.ModelSerializer):
     """Serializer for Product model."""
 
-    category_name = serializers.CharField(source="category.name", read_only=True)
+    category_name = serializers.SerializerMethodField()
     total_stock = serializers.ReadOnlyField()
 
     class Meta:
@@ -65,6 +67,10 @@ class ProductSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
         read_only_fields = ["created_at", "updated_at"]
+
+    def get_category_name(self, obj):
+        """Return the category name, tolerating a null category."""
+        return obj.category.name if obj.category else None
 
 
 class StockLevelSerializer(serializers.ModelSerializer):
@@ -94,7 +100,12 @@ class StockLevelSerializer(serializers.ModelSerializer):
 
 
 class StockMovementSerializer(serializers.ModelSerializer):
-    """Serializer for StockMovement model."""
+    """Serializer for StockMovement model.
+
+    Business validation (sufficient stock, positive quantity) lives in
+    ``StockMovement.save()`` so it cannot be bypassed through this
+    endpoint; here we surface those errors as 400 responses.
+    """
 
     product_sku = serializers.CharField(source="product.sku", read_only=True)
     product_name = serializers.CharField(source="product.name", read_only=True)
@@ -118,6 +129,38 @@ class StockMovementSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["created_at", "performed_by"]
 
+    def validate_quantity(self, value):
+        """Quantities are always positive; direction comes from movement_type."""
+        if value < 0:
+            raise serializers.ValidationError("Quantity must be a positive integer.")
+        return value
+
+    def create(self, validated_data):
+        """Create a movement, translating model validation errors to 400s."""
+        # Audit trail: stamp the acting user server-side so ``performed_by``
+        # cannot be spoofed through the plain POST endpoint (the field is
+        # read-only here; views inject it into the serializer context).
+        if "performed_by" not in validated_data:
+            validated_data["performed_by"] = self.context.get("user", "system")
+        try:
+            return super().create(validated_data)
+        except DjangoValidationError as exc:
+            raise serializers.ValidationError(get_error_detail(exc)) from exc
+
+
+def get_error_detail(exc_info):
+    """Convert a Django ValidationError into an DRF-style error dict/list."""
+    error_dict = {}
+    error_list = []
+    for e in exc_info.error_list:
+        try:
+            key = e.params["field"]
+        except (AttributeError, KeyError, TypeError):
+            error_list.append(e.messages[0])
+        else:
+            error_dict.setdefault(key, []).extend(e.messages)
+    return error_dict or error_list
+
 
 class StockAdjustmentSerializer(serializers.Serializer):
     """Serializer for stock adjustment operations."""
@@ -130,40 +173,76 @@ class StockAdjustmentSerializer(serializers.Serializer):
     notes = serializers.CharField(required=False, allow_blank=True)
 
     def validate(self, data):
-        """Validate referenced records and stock for an adjustment."""
+        """Validate referenced records and quantity sign.
+
+        Stock-sufficiency checks are enforced atomically in
+        ``StockMovement.save()`` (with a row lock), so we do not duplicate
+        the read here — that would be vulnerable to TOCTOU races.
+        """
         # Validate product exists
-        try:
-            Product.objects.get(id=data["product_id"])
-        except Product.DoesNotExist:
+        if not Product.objects.filter(id=data["product_id"]).exists():
             raise serializers.ValidationError({"product_id": "Product does not exist"})
 
         # Validate warehouse exists
-        try:
-            Warehouse.objects.get(id=data["warehouse_id"])
-        except Warehouse.DoesNotExist:
-            raise serializers.ValidationError(
-                {"warehouse_id": "Warehouse does not exist"}
-            )
+        if not Warehouse.objects.filter(id=data["warehouse_id"]).exists():
+            raise serializers.ValidationError({"warehouse_id": "Warehouse does not exist"})
 
-        # Validate quantity for outbound movements
-        if data["movement_type"] in ["OUT", "TRANSFER_OUT"]:
-            try:
-                stock_level = StockLevel.objects.get(
-                    product_id=data["product_id"], warehouse_id=data["warehouse_id"]
-                )
-                if abs(data["quantity"]) > stock_level.available_quantity:
-                    raise serializers.ValidationError(
-                        {"quantity": "Insufficient stock for this movement"}
-                    )
-            except StockLevel.DoesNotExist:
-                raise serializers.ValidationError(
-                    {
-                        "quantity": "No stock available for this product in this warehouse"
-                    }
-                )
+        # Quantities are always positive; direction comes from movement_type
+        if data["quantity"] < 0:
+            raise serializers.ValidationError({"quantity": "Quantity must be a positive integer."})
 
         return data
 
     def create(self, validated_data):
         """Create a stock movement from validated adjustment data."""
         return StockMovement.objects.create(**validated_data)
+
+
+class StockTransferSerializer(serializers.Serializer):
+    """Move stock between two warehouses as an atomic OUT + IN pair."""
+
+    product_id = serializers.IntegerField()
+    source_warehouse_id = serializers.IntegerField()
+    destination_warehouse_id = serializers.IntegerField()
+    quantity = serializers.IntegerField(min_value=1)
+    reference = serializers.CharField(max_length=100, required=False, allow_blank=True)
+    notes = serializers.CharField(required=False, allow_blank=True)
+
+    def validate(self, data):
+        """Ensure both warehouses exist and they are distinct."""
+        if data["source_warehouse_id"] == data["destination_warehouse_id"]:
+            raise serializers.ValidationError(
+                {"destination_warehouse_id": "Source and destination must differ"}
+            )
+        if not Product.objects.filter(id=data["product_id"]).exists():
+            raise serializers.ValidationError({"product_id": "Product does not exist"})
+        wh_ids = [data["source_warehouse_id"], data["destination_warehouse_id"]]
+        if not Warehouse.objects.filter(id__in=wh_ids).count() == 2:
+            raise serializers.ValidationError("One or more warehouses do not exist")
+        return data
+
+    @transaction.atomic
+    def create(self, validated_data):
+        """Create paired TRANSFER_OUT / TRANSFER_IN movements atomically.
+
+        The OUT movement is validated against available stock inside
+        ``StockMovement.save()``; if it fails, the whole transfer rolls back.
+        """
+        common = {
+            "product_id": validated_data["product_id"],
+            "quantity": validated_data["quantity"],
+            "reference": validated_data.get("reference", ""),
+            "notes": validated_data.get("notes", ""),
+            "performed_by": self.context.get("user", "system"),
+        }
+        out = StockMovement.objects.create(
+            movement_type="TRANSFER_OUT",
+            warehouse_id=validated_data["source_warehouse_id"],
+            **common,
+        )
+        transfer_in = StockMovement.objects.create(
+            movement_type="TRANSFER_IN",
+            warehouse_id=validated_data["destination_warehouse_id"],
+            **common,
+        )
+        return {"transfer_out": out, "transfer_in": transfer_in}

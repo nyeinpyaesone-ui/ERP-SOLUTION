@@ -3,11 +3,18 @@ Unit Tests for Inventory Models
 ================================
 Tests for Warehouse, Category, Product, StockLevel, and StockMovement models.
 """
+
 import pytest
+from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 
-from src.modules.inventory.models import (Category, Product, StockLevel,
-                                          StockMovement, Warehouse)
+from src.modules.inventory.models import (
+    Category,
+    Product,
+    StockLevel,
+    StockMovement,
+    Warehouse,
+)
 
 
 @pytest.mark.unit
@@ -208,7 +215,10 @@ class TestStockMovementModel:
         assert stock_level.quantity == 50
 
     def test_stock_out_movement(self, db, setup_movement):
-        """Decrease stock for outbound movements."""
+        """Decrease stock for outbound movements.
+
+        Quantities are always positive; direction is given by movement_type.
+        """
         # First add stock
         StockLevel.objects.create(
             product=setup_movement["product"],
@@ -220,7 +230,7 @@ class TestStockMovementModel:
             product=setup_movement["product"],
             warehouse=setup_movement["warehouse"],
             movement_type="OUT",
-            quantity=-30,
+            quantity=30,
             performed_by="user2",
         )
 
@@ -228,6 +238,56 @@ class TestStockMovementModel:
             product=setup_movement["product"], warehouse=setup_movement["warehouse"]
         )
         assert stock_level.quantity == 70
+        assert movement.quantity == 30
+
+    def test_stock_out_rejects_negative_quantity(self, db, setup_movement):
+        """Negative quantities are rejected (direction comes from type)."""
+        with pytest.raises(ValidationError):
+            StockMovement.objects.create(
+                product=setup_movement["product"],
+                warehouse=setup_movement["warehouse"],
+                movement_type="OUT",
+                quantity=-30,
+                performed_by="user2",
+            )
+
+    def test_stock_out_insufficient_stock(self, db, setup_movement):
+        """Outbound movements cannot exceed available stock."""
+        StockLevel.objects.create(
+            product=setup_movement["product"],
+            warehouse=setup_movement["warehouse"],
+            quantity=10,
+        )
+        with pytest.raises(ValidationError):
+            StockMovement.objects.create(
+                product=setup_movement["product"],
+                warehouse=setup_movement["warehouse"],
+                movement_type="OUT",
+                quantity=50,
+                performed_by="user2",
+            )
+        # Stock must be unchanged after the failed movement
+        stock_level = StockLevel.objects.get(
+            product=setup_movement["product"], warehouse=setup_movement["warehouse"]
+        )
+        assert stock_level.quantity == 10
+
+    def test_resaving_movement_does_not_double_apply(self, db, setup_movement):
+        """Re-saving an existing movement must not re-apply its stock effect."""
+        movement = StockMovement.objects.create(
+            product=setup_movement["product"],
+            warehouse=setup_movement["warehouse"],
+            movement_type="IN",
+            quantity=50,
+            performed_by="user1",
+        )
+        movement.notes = "corrected notes"
+        movement.save()
+
+        stock_level = StockLevel.objects.get(
+            product=setup_movement["product"], warehouse=setup_movement["warehouse"]
+        )
+        assert stock_level.quantity == 50
 
     def test_adjustment_movement(self, db, setup_movement):
         """Set stock to the quantity supplied by an adjustment."""
@@ -237,7 +297,7 @@ class TestStockMovementModel:
             quantity=100,
         )
 
-        movement = StockMovement.objects.create(
+        StockMovement.objects.create(
             product=setup_movement["product"],
             warehouse=setup_movement["warehouse"],
             movement_type="ADJUSTMENT",

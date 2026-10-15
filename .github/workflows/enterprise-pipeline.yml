@@ -106,23 +106,18 @@ jobs:
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
           pip install pytest pytest-cov pytest-django
 
-      - name: Wait for Database
-        run: |
-          echo "Waiting for PostgreSQL..."
-          while ! pg_isready -h localhost -p 5432 -q; do
-            echo "Postgres is unavailable - sleeping"
-            sleep 2
-          done
-          echo "Postgres is up!"
-
       - name: Run Tests with Coverage
         env:
-          DATABASE_URL: postgres://test_user:test_pass@localhost:5432/erp_test
-          REDIS_URL: redis://localhost:6379/0
           SECRET_KEY: test-secret-key-for-ci-only
-          DJANGO_SETTINGS_MODULE: config.settings.test
+          PYTHONPATH: ${{ github.workspace }}
+        # Run from the repo root so pytest.ini is honored as rootdir config.
+        # config/settings/test.py intentionally uses in-memory SQLite for
+        # deterministic, service-free unit tests, so no Postgres wait is
+        # needed here. The previous `pytest src/ ... || true` invocation
+        # collected nothing useful and silently swallowed ALL failures —
+        # removed so real regressions break the pipeline.
         run: |
-          pytest src/ --cov=src --cov-report=xml --cov-fail-under=70 || true
+          pytest --cov=src --cov-report=xml --cov-fail-under=70
 
       - name: Upload Coverage Report
         uses: codecov/codecov-action@v4

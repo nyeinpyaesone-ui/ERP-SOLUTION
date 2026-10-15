@@ -118,6 +118,10 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",
     ],
+    # Leave the request.user as ``None`` for unauthenticated requests so
+    # DRF rejects them with HTTP 401 + WWW-Authenticate (JWT challenge)
+    # instead of instantiating AnonymousUser and answering 403.
+    "UNAUTHENTICATED_USER": None,
     "DEFAULT_FILTER_BACKENDS": [
         "django_filters.rest_framework.DjangoFilterBackend",
         "rest_framework.filters.SearchFilter",
@@ -136,5 +140,6 @@ CORS_ALLOWED_ORIGINS = [
     if origin.strip()
 ]
 
-# Secret key (should be overridden in environment-specific settings)
+# Secret key. Development/test settings may rely on the fallback below;
+# production.py raises if SECRET_KEY is not provided via the environment.
 SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key-change-in-production")
