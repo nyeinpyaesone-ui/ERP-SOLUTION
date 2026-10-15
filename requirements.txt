@@ -1,5 +1,5 @@
 # Core Framework Dependencies
-Django>=4.2,<5.0
+Django>=4.2.25  # LTS line patched through 4.2.30; see RELEASE_CHECKLIST.md security notes
 djangorestframework>=3.14.0
 django-cors-headers>=4.3.0
 django-filter>=23.5
