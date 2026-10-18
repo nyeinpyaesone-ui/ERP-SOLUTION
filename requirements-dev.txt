@@ -1,73 +1,45 @@
 # =============================================================================
-# Development Dependencies for Modular ERP System
+# Development / CI Dependencies for Modular ERP System
 # =============================================================================
-# Install after production requirements: pip install -r requirements.txt
-# Then install dev dependencies: pip install -r requirements-dev.txt
+# Install after production requirements:
+#   pip install -r requirements.txt
+#   pip install -r requirements-dev.txt
+# Kept separate so the production image (Dockerfile) never ships test tooling.
 # =============================================================================
 
-# API Documentation
-drf-spectacular>=0.27.0
-drf-yasg>=1.21.8
+# --- Testing -------------------------------------------------------------------
+pytest>=7.4.3                # test runner (see pytest.ini for config)
+pytest-django>=4.7.0         # Django integration (DJANGO_SETTINGS_MODULE=config.settings.test)
+pytest-cov>=4.1.0            # coverage reporting + --cov-fail-under gate
+pytest-xdist>=3.3.1          # parallel test execution (-n auto)
+pytest-mock>=3.12.0          # mocking utilities
+factory-boy>=3.3.0           # model/object factories used in tests/
+faker>=21.0.0                # fake data generation for factories
+hypothesis>=6.92.0           # property-based testing
 
-# Debugging & Profiling
-django-debug-toolbar>=4.2.0
-django-silk>=5.0.3
+# --- Code Quality / Linting ----------------------------------------------------
+flake8>=6.1.0                # configured via setup.cfg (line-length 100)
+black>=23.12.0               # formatter (--line-length 100 --target-version py310)
+isort>=5.13.2                # import sorter (--profile black)
+mypy>=1.7.1                  # static type checker (see .pre-commit-config.yaml)
+pylint>=3.0.3                # secondary linter
+autoflake>=2.2.1             # remove unused imports/variables
+pyupgrade>=3.15.0            # upgrade syntax for newer Python versions
 
-# Database Tools
-django-dbbackup>=4.0.2
-django-redis>=5.4.0
-
-# Enhanced Testing
-pytest-django>=4.5.2         # Django integration for pytest (DJANGO_SETTINGS_MODULE)
-pytest-xdist>=3.3.1          # Parallel test execution
-pytest-mock>=3.12.0          # Mocking utilities
-hypothesis>=6.92.0           # Property-based testing
-coverage[toml]>=7.3.2        # Extended coverage features
-
-# Security Scanning
-bandit>=1.7.6                # Security linter
-safety>=2.3.5                # Dependency vulnerability scanner
-
-# Code Formatting (additional)
-autoflake>=2.2.1             # Remove unused imports/variables
-pyupgrade>=3.15.0            # Upgrade syntax for newer Python versions
-
-# Type Checking Enhancement
+# --- Type Stubs ------------------------------------------------------------------
 types-requests>=2.31.0.10
 types-PyYAML>=6.0.12.12
-types-redis>=4.6.0.10
-django-stubs>=4.2.7          # Django type stubs
-djangorestframework-stubs>=3.14.3  # DRF type stubs
+django-stubs>=4.2.7          # Django type stubs for mypy
+djangorestframework-stubs>=3.14.3  # DRF type stubs for mypy
 
-# Documentation Generation
-Sphinx>=7.2.6
-sphinx-rtd-theme>=2.0.0
-myst-parser>=2.0.0
+# --- Security Scanning -----------------------------------------------------------
+bandit>=1.7.6                # security linter (CI: bandit -r src/)
+pip-audit>=2.7.0             # dependency vulnerability scanner (replaces deprecated `safety` DB mode; see RELEASE_CHECKLIST.md)
 
-# Development Utilities
-watchdog>=3.0.0              # File system events
-ipython>=8.18.0              # Enhanced Python shell
-jupyter>=1.0.0               # Interactive notebooks for data analysis
+# --- Debugging & Profiling (optional, dev-only) ----------------------------------
+django-debug-toolbar>=4.2.0  # add to INSTALLED_APPS only in local dev settings
+ipython>=8.18.0              # enhanced Python shell
 
-# Load Testing
-locust>=2.20.0               # Performance/load testing
-
-# Container Development
-docker>=7.0.0                # Docker SDK for Python
-docker-compose>=1.29.2
-
-# Environment Management
-pip-tools>=7.3.0             # Pin dependencies
-pipenv>=2023.11.5            # Alternative dependency management
-
-# Git Hooks Enhancement
-commitizen>=3.13.0           # Conventional commits
-pre-commit-hooks>=4.5.0      # Additional pre-commit hooks
-
-# Monitoring & APM (Development)
-opentelemetry-api>=1.21.0
-opentelemetry-sdk>=1.21.0
-opentelemetry-instrumentation-django>=0.42b0
-
-# Email Testing (for development)
-# mailpit>=1.0.0               # Email testing tool (Removed: Use Docker instead)
+# --- Git Workflow ----------------------------------------------------------------
+pre-commit>=3.6.0            # hooks defined in .pre-commit-config.yaml
+commitizen>=3.13.0           # conventional-commit enforcement (optional)

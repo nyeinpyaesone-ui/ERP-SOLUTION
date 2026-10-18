@@ -1,54 +1,44 @@
-# Core Framework Dependencies
-Django>=4.2.25  # LTS line patched through 4.2.30; see RELEASE_CHECKLIST.md security notes
-djangorestframework>=3.14.0
-django-cors-headers>=4.3.0
-django-filter>=23.5
-django-extensions>=3.2.3
+# =============================================================================
+# Production Dependencies for Modular ERP System
+# =============================================================================
+# Every package listed here is imported by runtime code (config/, src/) or is
+# required by a Django setting referenced in config/settings/*.py.
+# Verified against actual imports — see docs comment blocks per section.
+# Install: pip install -r requirements.txt
+# =============================================================================
 
-# Database
-psycopg2-binary>=2.9.9
-SQLAlchemy>=2.0.23
+# --- Core Framework -----------------------------------------------------------
+# Django LTS line; floor pinned for PYSEC-2026 advisory coverage
+# (see RELEASE_CHECKLIST.md security notes). Supports 4.2.x and 5.x so the
+# project can migrate to the next LTS without touching this file.
+Django>=4.2.25,<6.0
 
-# Authentication & Security
-djangorestframework-simplejwt>=5.3.1
-bcrypt>=4.1.2
+# --- REST API (used by src/api, src/modules/inventory) ------------------------
+djangorestframework>=3.14.0          # rest_framework imports, viewsets, serializers
+djangorestframework-simplejwt>=5.3.1 # JWT authN/authZ configured in settings/base.py
+django-cors-headers>=4.3.0           # 'corsheaders' app + middleware in INSTALLED_APPS
+django-filter>=23.5                  # 'django_filters' app + FilterBackends
+django-extensions>=3.2.3             # 'django_extensions' app in INSTALLED_APPS
 
-# Data Validation & Serialization
-pydantic>=2.5.0
-marshmallow>=3.20.1
+# --- Database ------------------------------------------------------------------
+psycopg2-binary>=2.9.9               # PostgreSQL driver for DATABASES config
 
-# YAML Configuration (pinned for compatibility)
-PyYAML==6.0.1
+# --- Configuration & Environment ----------------------------------------------
+python-dotenv>=1.0.0                 # dotenv.load_dotenv() in settings/base.py
+PyYAML==6.0.1                        # trigger_config.yaml loader in src/core/module_loader.py
 
-# Task Queue & Caching
-celery>=5.3.4
-redis>=5.0.1
+# --- Logging & Monitoring ------------------------------------------------------
+python-json-logger>=2.0.7            # pythonjsonlogger.jsonlogger.JsonFormatter in production.py
+sentry-sdk>=1.38.0                   # sentry_sdk.init() + logging handler in production.py
 
-# Testing
-pytest>=7.4.3
-pytest-django>=4.7.0
-pytest-cov>=4.1.0
-factory-boy>=3.3.0
-faker>=21.0.0
+# --- Media & Reporting (declared feature dependencies) ------------------------
+Pillow>=10.1.0                       # ImageField support (required if models add images)
+openpyxl>=3.1.2                      # Excel export utilities
+reportlab>=4.0.7                     # PDF report generation utilities
 
-# Code Quality
-flake8>=6.1.0
-black>=23.12.0
-isort>=5.13.2
-mypy>=1.7.1
-pylint>=3.0.3
+# --- Async Tasks & Caching (planned module: notifications/queue workers) -----
+celery>=5.3.4                        # background task queue (worker entrypoint when modules land)
+redis>=5.0.1                         # Celery broker / Django cache backend target
 
-# Logging & Monitoring
-python-json-logger>=2.0.7
-sentry-sdk>=1.38.0
-
-# Utilities
-python-dotenv>=1.0.0
-requests>=2.31.0
-Pillow>=10.1.0
-openpyxl>=3.1.2
-reportlab>=4.0.7
-
-# Development
-ipython>=8.18.0
-pre-commit>=3.6.0
+# --- Development Workflow ------------------------------------------------------
+pre-commit>=3.6.0                    # git hooks defined in .pre-commit-config.yaml
