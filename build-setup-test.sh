@@ -171,23 +171,25 @@ run_tests() {
 # Run linting and code quality checks
 run_linting() {
     print_header "Running Code Quality Checks"
-    
-    cd "$SRC_DIR"
-    
-    log_info "Running flake8..."
-    flake8 . --config="${PROJECT_ROOT}/setup.cfg" || true
-    
-    log_info "Running black (check mode)..."
-    black --check . || true
-    
-    log_info "Running isort (check mode)..."
-    isort --check-only . || true
-    
-    log_info "Running mypy..."
-    mypy . --ignore-missing-imports || true
-    
-    log_success "Code quality checks completed"
+
+    # Run from the repo root with the same arguments as .pre-commit-config.yaml
+    # so local, pre-commit, and CI results agree. Failures are reported but
+    # non-fatal here; pre-commit/CI enforce them at commit/push time.
     cd "$PROJECT_ROOT"
+
+    log_info "Running flake8..."
+    python -m flake8 src/ config/ tests/ --config="${PROJECT_ROOT}/setup.cfg" || true
+
+    log_info "Running black (check mode)..."
+    black --check --line-length 100 --target-version py310 src/ config/ tests/ || true
+
+    log_info "Running isort (check mode)..."
+    isort --check-only --profile black --line-length 100 src/ config/ tests/ || true
+
+    log_info "Running mypy..."
+    mypy src/ config/ --ignore-missing-imports || true
+
+    log_success "Code quality checks completed"
 }
 
 # Clean build artifacts

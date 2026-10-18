@@ -3,18 +3,18 @@ Unit Tests for Inventory Serializers
 =====================================
 Tests for all inventory model serializers.
 """
-import pytest
-from django.test import TestCase
-from rest_framework.test import APIRequestFactory
 
-from src.modules.inventory.models import (Category, Product, StockLevel,
-                                          StockMovement, Warehouse)
-from src.modules.inventory.serializers import (CategorySerializer,
-                                               ProductSerializer,
-                                               StockAdjustmentSerializer,
-                                               StockLevelSerializer,
-                                               StockMovementSerializer,
-                                               WarehouseSerializer)
+import pytest
+
+from src.modules.inventory.models import Category, Product, StockLevel, StockMovement, Warehouse
+from src.modules.inventory.serializers import (
+    CategorySerializer,
+    ProductSerializer,
+    StockAdjustmentSerializer,
+    StockLevelSerializer,
+    StockMovementSerializer,
+    WarehouseSerializer,
+)
 
 
 @pytest.mark.unit
@@ -24,9 +24,7 @@ class TestWarehouseSerializer:
     @pytest.fixture
     def warehouse(self, db):
         """Create a warehouse for serializer tests."""
-        return Warehouse.objects.create(
-            name="Test Warehouse", code="TWH001", address="123 Test St"
-        )
+        return Warehouse.objects.create(name="Test Warehouse", code="TWH001", address="123 Test St")
 
     def test_warehouse_serializer_fields(self, warehouse):
         """Expose the expected warehouse fields."""
@@ -57,9 +55,7 @@ class TestCategorySerializer:
     @pytest.fixture
     def category(self, db):
         """Create a category for serializer tests."""
-        return Category.objects.create(
-            name="Electronics", description="Electronic items"
-        )
+        return Category.objects.create(name="Electronics", description="Electronic items")
 
     def test_category_serializer_fields(self, category):
         """Expose the expected category fields."""
@@ -74,7 +70,7 @@ class TestCategorySerializer:
 
     def test_category_serializer_with_children(self, db, category):
         """Report the number of direct child categories."""
-        child = Category.objects.create(name="Phones", parent=category)
+        Category.objects.create(name="Phones", parent=category)
         serializer = CategorySerializer(category)
         data = serializer.data
         assert data["children_count"] == 1

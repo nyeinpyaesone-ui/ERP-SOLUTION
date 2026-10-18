@@ -136,7 +136,9 @@ repos:
     hooks:
       - id: django-check
         name: "Django: System Check"
-        entry: bash -c 'cd src && python manage.py check --deploy --fail-level WARNING'
+        # Run from the repo root with an explicit settings module; manage.py
+        # defaults to config.settings.development which requires a local DB.
+        entry: bash -c 'DJANGO_SETTINGS_MODULE=config.settings.test python src/manage.py check --deploy --fail-level WARNING'
         language: system
         pass_filenames: false
         always_run: true
@@ -145,7 +147,7 @@ repos:
 
       - id: django-makemigrations-check
         name: "Django: Migration Check"
-        entry: bash -c 'cd src && python manage.py makemigrations --check --dry-run'
+        entry: bash -c 'DJANGO_SETTINGS_MODULE=config.settings.test python src/manage.py makemigrations --check --dry-run'
         language: system
         pass_filenames: false
         always_run: true
@@ -159,7 +161,8 @@ repos:
     hooks:
       - id: pytest-coverage
         name: "pytest: Coverage Gate (70% min)"
-        entry: bash -c 'cd src && python -m pytest --cov=src --cov-fail-under=70 -q'
+        # Run from the repo root so pytest.ini is honored as rootdir config.
+        entry: bash -c 'python -m pytest --cov=src --cov-fail-under=70 -q'
         language: system
         pass_filenames: false
         always_run: false

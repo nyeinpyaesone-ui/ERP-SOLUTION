@@ -114,16 +114,23 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+          # requirements.txt does not include the test toolchain; without
+          # these the job failed with "pytest: command not found" / missing
+          # plugin errors.
+          pip install pytest pytest-django pytest-cov
 
       - name: Run pytest with coverage
         env:
           DJANGO_SETTINGS_MODULE: config.settings.test
           DATABASE_URL: postgres://testuser:testpass@localhost:5432/erp_test
           REDIS_URL: redis://localhost:6379/0
+          PYTHONPATH: ${{ github.workspace }}
+        # Run from the repo root so pytest.ini (which sets DJANGO_SETTINGS_MODULE,
+        # coverage source and the libtmux plugin workaround) is picked up as the
+        # rootdir config. Previously this did `cd src` + `--cov=.` which measured
+        # nothing useful and ignored pytest.ini entirely.
         run: |
-          cd src
-          pytest tests/ \
-            --cov=. \
+          pytest --cov=src \
             --cov-report=xml \
             --cov-report=html \
             --cov-fail-under=70 \
@@ -133,7 +140,7 @@ jobs:
       - name: Upload coverage report
         uses: codecov/codecov-action@v4
         with:
-          file: ./src/coverage.xml
+          file: ./coverage.xml
           flags: unittests
           name: codecov-erp-development
         env:
@@ -144,7 +151,7 @@ jobs:
         if: always()
         with:
           name: coverage-html-report
-          path: src/htmlcov/
+          path: htmlcov/
           retention-days: 5
 
   # ---------------------------------------------------------------------------

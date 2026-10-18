@@ -1,6 +1,7 @@
 """
 Django settings for testing environment.
 """
+
 from .base import *  # noqa: F401, F403
 
 # Use in-memory database for faster tests
@@ -49,12 +50,21 @@ ALLOWED_HOSTS = ["*"]
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOWED_ORIGINS = []
 
-# Disable authentication for tests
+# Test API settings. Authentication classes and permissions are NOT
+# disabled here: viewsets declare their own permission classes and the
+# test suite exercises real auth behavior (401/403). Keeping JWT auth
+# enabled also ensures unauthenticated requests receive 401 +
+# WWW-Authenticate challenges, matching production semantics.
 REST_FRAMEWORK = {
-    "DEFAULT_AUTHENTICATION_CLASSES": [],
-    "DEFAULT_PERMISSION_CLASSES": [
-        "rest_framework.permissions.AllowAny",
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
     ],
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.IsAuthenticated",
+    ],
+    # Leave request.user as None for unauthenticated requests so DRF
+    # returns 401 instead of instantiating AnonymousUser and returning 403.
+    "UNAUTHENTICATED_USER": None,
     "DEFAULT_FILTER_BACKENDS": [
         "django_filters.rest_framework.DjangoFilterBackend",
         "rest_framework.filters.SearchFilter",

@@ -14,9 +14,13 @@ class BaseModel(models.Model):
     Abstract base model providing:
     - Created/Updated timestamps
     - Created/Updated by user tracking
-    - Soft delete capability
-    - Active status flag
-    - Unique identifier (UUID)
+    - Soft delete capability (is_deleted + deleted_at/deleted_by)
+    - Active status flag (independent visibility/enabled toggle)
+    - Free-text remarks field
+
+    Note: primary keys are Django BigAutoField integers (project-wide
+    ``DEFAULT_AUTO_FIELD``); this class intentionally does not add a UUID
+    column.
     """
 
     created_at = models.DateTimeField(
@@ -85,18 +89,17 @@ class BaseModel(models.Model):
         abstract = True
         ordering = ["-created_at"]
         indexes = [
-            models.Index(fields=["is_active"]),
-            models.Index(fields=["is_deleted"]),
-            models.Index(fields=["created_at"]),
+            # created_at is already indexed by its own auto-generated index;
+            # only the boolean flags need explicit single-column indexes.
+            models.Index(fields=["is_active"], name="%(app_label)s_%(class)s_active_idx"),
+            models.Index(fields=["is_deleted"], name="%(app_label)s_%(class)s_deleted_idx"),
         ]
 
     def __str__(self) -> str:
         """String representation - override in child classes."""
         return f"{self.__class__.__name__} ({getattr(self, 'id', 'N/A')})"
 
-    def soft_delete(
-        self, user: Optional[Any] = None, remarks: Optional[str] = None
-    ) -> None:
+    def soft_delete(self, user: Optional[Any] = None, remarks: Optional[str] = None) -> None:
         """
         Perform soft delete on this record.
 

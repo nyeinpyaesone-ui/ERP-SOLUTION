@@ -222,8 +222,6 @@ class Migration(migrations.Migration):
         ),
         migrations.AddIndex(
             model_name="product",
-            index=models.Index(
-                fields=["category"], name="inventory_p_categor_607069_idx"
-            ),
+            index=models.Index(fields=["category"], name="inventory_p_categor_607069_idx"),
         ),
     ]

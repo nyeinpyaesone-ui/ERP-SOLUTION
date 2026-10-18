@@ -4,12 +4,23 @@ Django Settings - Production Environment
 Configuration for production deployment.
 """
 
+import os
+
+from django.core.exceptions import ImproperlyConfigured
+
 from .base import *  # noqa: F401, F403
 
 # Security settings for production
 DEBUG = False
 
-ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "").split(",")
+# Fail fast rather than boot with the insecure development fallback key.
+if not os.getenv("SECRET_KEY"):
+    raise ImproperlyConfigured(
+        "SECRET_KEY must be set in the environment for production deployments."
+    )
+SECRET_KEY = os.environ["SECRET_KEY"]
+
+ALLOWED_HOSTS = [h.strip() for h in os.getenv("ALLOWED_HOSTS", "").split(",") if h.strip()]
 
 # Database configuration for production
 DATABASES = {

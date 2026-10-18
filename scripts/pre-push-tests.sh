@@ -10,7 +10,11 @@ echo "=========================================="
 
 echo ""
 echo "[1/5] Running tests..."
-pytest --cov=src --cov-fail-under=80 -q
+# Single source of truth for the coverage gate: 70% (see pytest.ini and the
+# pre-commit pre-push hook). Previously this script demanded 80%, which no
+# configuration elsewhere agreed with, making local pre-push runs fail even
+# when CI was green.
+pytest --cov=src --cov-fail-under=70 -q
 
 echo ""
 echo "[2/5] Checking code formatting (Black)..."
