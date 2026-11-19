@@ -54,7 +54,7 @@ jobs:
             python -m pip install --no-cache-dir -r requirements-dev.txt
             python src/manage.py migrate --noinput
             python src/manage.py check
-            python -m pytest
+            DJANGO_SETTINGS_MODULE=config.settings.test python -m pytest
           '
 
       - name: Collect service logs on failure
