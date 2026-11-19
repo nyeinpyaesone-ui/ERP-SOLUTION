@@ -20,7 +20,11 @@ if not os.getenv("SECRET_KEY"):
     )
 SECRET_KEY = os.environ["SECRET_KEY"]
 
-ALLOWED_HOSTS = [h.strip() for h in os.getenv("ALLOWED_HOSTS", "").split(",") if h.strip()]
+# The container liveness probe uses Host: localhost. Keep loopback hosts allowed
+# even when deployment-specific public hostnames are supplied.
+ALLOWED_HOSTS = ["localhost", "127.0.0.1"] + [
+    h.strip() for h in os.getenv("ALLOWED_HOSTS", "").split(",") if h.strip()
+]
 
 # Database configuration for production
 DATABASES = {
@@ -48,8 +52,10 @@ SECURE_HSTS_SECONDS = 31536000
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
 
-# SSL redirect (ensure your reverse proxy handles SSL termination)
+# SSL redirect (ensure your reverse proxy handles SSL termination).
+# The internal HTTP liveness probe has no TLS listener to redirect to.
 SECURE_SSL_REDIRECT = True
+SECURE_REDIRECT_EXEMPT = [r"^health/$"]
 
 # Logging for production
 LOGGING = {

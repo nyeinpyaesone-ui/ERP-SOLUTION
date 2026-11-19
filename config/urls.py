@@ -11,6 +11,8 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
 
+from config.health import health_check
+
 # Import dynamic module loader (kept available for programmatic inspection;
 # URL registration intentionally goes through src/api/urls.py only — see the
 # note below urlpatterns).
@@ -22,6 +24,8 @@ except ImportError:
     module_loader = None
 
 urlpatterns = [
+    # Process liveness endpoint; independent of database and cache availability.
+    path("health/", health_check, name="health"),
     # Admin interface
     path("admin/", admin.site.urls),
     # API endpoints (module routes are registered here; see src/api/urls.py)

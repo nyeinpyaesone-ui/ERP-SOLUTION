@@ -21,6 +21,7 @@ django-filter>=23.5                  # 'django_filters' app + FilterBackends
 django-extensions>=3.2.3             # 'django_extensions' app in INSTALLED_APPS
 
 # --- Database ------------------------------------------------------------------
+gunicorn>=23.0.0,<24.0.0          # production WSGI server (Dockerfile CMD)
 psycopg2-binary>=2.9.9               # PostgreSQL driver for DATABASES config
 
 # --- Configuration & Environment ----------------------------------------------

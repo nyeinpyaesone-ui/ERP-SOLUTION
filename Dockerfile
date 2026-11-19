@@ -46,7 +46,7 @@ WORKDIR /app
 
 # Copy wheels from builder and install
 COPY --from=builder /usr/src/app/wheels /wheels
-COPY --from=builder /usr/src/app/requirements.txt .
+COPY --from=builder /app/requirements.txt .
 RUN pip install --no-cache /wheels/* \
     && rm -rf /wheels
 
@@ -68,7 +68,8 @@ ENV DJANGO_SETTINGS_MODULE=config.settings.production \
 
 # Collect static files (required for production). manage.py lives in src/;
 # it adds the repo root to sys.path so `config.settings.production` imports.
-RUN python src/manage.py collectstatic --noinput --clear
+RUN SECRET_KEY=build-only-not-for-runtime ALLOWED_HOSTS=localhost \
+    python src/manage.py collectstatic --noinput --clear
 
 # Switch to non-root user
 USER appuser
