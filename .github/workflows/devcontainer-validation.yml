@@ -11,7 +11,7 @@ on:
       - "tests/**"
       - "pytest.ini"
   push:
-    branches: [main]
+    branches: [main, 'fix/**']
     paths:
       - ".devcontainer/**"
       - "config/settings/development.py"
