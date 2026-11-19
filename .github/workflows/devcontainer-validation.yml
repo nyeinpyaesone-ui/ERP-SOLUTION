@@ -1,6 +1,7 @@
 name: DevContainer Validation
 
 on:
+  workflow_dispatch:
   pull_request:
     branches: [main]
     paths:
@@ -35,6 +36,12 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+
+      - name: Validate DevContainer metadata and shell scripts
+        run: |
+          python -m json.tool .devcontainer/devcontainer.json >/dev/null
+          bash -n .devcontainer/post-create.sh
+          bash -n .devcontainer/scripts/wait-for-services.sh
 
       - name: Validate Compose configuration
         run: docker compose -f .devcontainer/compose.yaml config --quiet
