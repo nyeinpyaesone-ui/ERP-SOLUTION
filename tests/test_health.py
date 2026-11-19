@@ -1,9 +1,6 @@
 """Tests for the process liveness endpoint."""
 
-import pytest
 
-
-@pytest.mark.django_db
 def test_health_endpoint_returns_ok(client):
     response = client.get("/health/")
 
