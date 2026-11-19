@@ -3,32 +3,27 @@ set -euo pipefail
 
 cd /workspaces/ERP-SOLUTION
 
-# Install repository-managed pre-commit hooks when available.
-if command -v pre-commit >/dev/null 2>&1 && [ -f .pre-commit-config.yaml ]; then
+echo "Waiting for development services..."
+bash .devcontainer/scripts/wait-for-services.sh
+
+echo "Installing development dependencies..."
+python -m pip install --no-cache-dir -r requirements-dev.txt
+
+if [ -f .pre-commit-config.yaml ]; then
   pre-commit install
 fi
 
-# Install Python dependencies in the virtual environment
-echo "Installing Python dependencies..."
-pip install -r requirements.txt
+echo "Applying Django migrations..."
+python src/manage.py migrate --noinput
 
-# Run Django migrations
-echo "Running database migrations..."
-python src/manage.py migrate
+echo "Checking Django configuration..."
+python src/manage.py check
 
-# Display environment information
-echo ""
+echo
 echo "=== ERP-SOLUTION Development Environment Ready ==="
 python --version
-pip --version
+python -m pip --version
 pytest --version
-echo ""
-echo "Database: PostgreSQL 15 (host: db, port: 5432)"
-echo "Cache/Queue: Redis 7 (host: redis, port: 6379)"
-echo ""
-echo "To start the development server:"
-echo "  python src/manage.py runserver 0.0.0.0:8000"
-echo ""
-echo "To run tests:"
-echo "  pytest tests/ --ds=config.settings.development"
-echo ""
+echo
+echo "Start the server: python src/manage.py runserver 0.0.0.0:8000"
+echo "Run tests:        python -m pytest"

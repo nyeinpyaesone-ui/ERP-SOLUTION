@@ -24,7 +24,8 @@ RUN apt-get update \
 
 COPY requirements.txt /tmp/requirements.txt
 RUN "${VIRTUAL_ENV}/bin/pip" install --no-cache-dir -r /tmp/requirements.txt \
-    && rm /tmp/requirements.txt
+    && rm /tmp/requirements.txt \
+    && chown -R vscode:vscode "${VIRTUAL_ENV}"
 
 USER vscode
 

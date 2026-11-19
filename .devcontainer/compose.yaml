@@ -1,0 +1,56 @@
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: .devcontainer/Dockerfile
+    init: true
+    command: ["sleep", "infinity"]
+    working_dir: /workspaces/ERP-SOLUTION
+    volumes:
+      - ..:/workspaces/ERP-SOLUTION:cached
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.development
+      DB_NAME: erp_dev
+      DB_USER: devuser
+      DB_PASSWORD: ${DEV_DB_PASSWORD:-local-dev-only-change-me}
+      DB_HOST: db
+      DB_PORT: "5432"
+      REDIS_URL: redis://redis:6379/0
+      SECRET_KEY: ${DEV_SECRET_KEY:-django-insecure-local-development-only}
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONUNBUFFERED: "1"
+      PIP_DISABLE_PIP_VERSION_CHECK: "1"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  db:
+    image: postgres:15
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: erp_dev
+      POSTGRES_USER: devuser
+      POSTGRES_PASSWORD: ${DEV_DB_PASSWORD:-local-dev-only-change-me}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U devuser -d erp_dev"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+
+volumes:
+  postgres-data:

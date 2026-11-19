@@ -1,0 +1,48 @@
+# Git metadata and local tooling
+.git
+.github
+
+# Python environments and caches
+.venv/
+venv/
+env/
+ENV/
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.nox/
+.hypothesis/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+*.egg-info/
+build/
+dist/
+.eggs/
+
+# Local secrets and environment files
+.env
+.env.*
+!.env.example
+!.env.sample
+*.pem
+*.key
+
+# Frontend and editor artifacts
+node_modules/
+.npm/
+.yarn/cache/
+.idea/
+.vscode/
+
+# OS and temporary files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*.tmp
