@@ -6,6 +6,8 @@ on:
     branches: [main]
     paths:
       - ".devcontainer/**"
+      - ".dockerignore"
+      - ".github/workflows/devcontainer-validation.yml"
       - "config/settings/development.py"
       - "requirements*.txt"
       - "src/**"
