@@ -17,10 +17,10 @@ ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.getenv("DB_NAME", "erp_db"),
-        "USER": os.getenv("DB_USER", "erp_user"),
-        "PASSWORD": os.getenv("DB_PASSWORD", "changeme_in_production"),
-        "HOST": os.getenv("DB_HOST", "localhost"),
+        "NAME": os.getenv("DB_NAME", "erp_dev"),
+        "USER": os.getenv("DB_USER", "devuser"),
+        "PASSWORD": os.getenv("DB_PASSWORD", "local-dev-only-change-me"),
+        "HOST": os.getenv("DB_HOST", "db"),
         "PORT": os.getenv("DB_PORT", "5432"),
     }
 }
