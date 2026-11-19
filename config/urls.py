@@ -9,7 +9,7 @@ from typing import Any, Optional
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
-from django.urls import include, path
+from django.urls import include, path\n\nfrom config.health import health_check
 
 # Import dynamic module loader (kept available for programmatic inspection;
 # URL registration intentionally goes through src/api/urls.py only — see the
