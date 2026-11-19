@@ -1,133 +1,80 @@
-# ERP System
+# ERP-SOLUTION
 
-A modular Enterprise Resource Planning (ERP) system designed for scalability and flexibility.
+A Django-based modular ERP foundation. The current repository contains a substantive inventory-management slice and scaffolding for additional ERP domains. It is **not yet a complete production ERP**.
 
-## Project Overview
+## Current implementation
 
-This project aims to provide a comprehensive ERP solution with modules for:
-- Inventory Management
-- Human Resources
-- Finance & Accounting
-- Sales & CRM
-- Procurement
-- Manufacturing
+- Django and Django REST Framework.
+- JWT authentication configured for API requests.
+- Environment-specific Django settings.
+- Inventory: warehouses, categories, products, stock levels, stock movements, serializers, viewsets, migrations, and tests.
+- Core module loader and event utilities.
+- PostgreSQL-oriented production configuration.
+- Multi-stage Docker build and GitHub Actions workflows.
 
-## Project Structure
+Inventory is currently the only substantive business module. Sales, HR, finance, procurement, and manufacturing require implementation and acceptance testing before production use.
 
+## Repository layout
+
+```text
+config/                 Django settings and root URL configuration
+src/core/               Shared module-loading and event utilities
+src/modules/inventory/  Inventory models, serializers, APIs, migrations
+src/modules/            Additional module scaffolding
+tests/                  Unit and API tests
+docs/                   Architecture, development, QA, and release guidance
+scripts/                Local setup, pre-push checks, and backup helper
+.github/workflows/      CI and container workflows
 ```
-/workspace
-├── src/            # Source code for all modules
-├── tests/          # Unit and integration tests
-├── docs/           # Documentation files
-├── config/         # Configuration files
-├── scripts/        # Utility and deployment scripts
-├── .gitignore      # Git ignore rules
-└── README.md       # This file
-```
 
-## Getting Started
+## Local development
 
-### Prerequisites
-
-- Python 3.8+ (or specify your preferred language/version)
-- pip or your preferred package manager
-- Database (PostgreSQL/MySQL recommended)
-
-### Installation
-
-1. Clone the repository:
-   ```bash
-   git clone <repository-url>
-   cd erp-project
-   ```
-
-2. Create a virtual environment:
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   ```
-
-3. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-4. Configure environment variables:
-   ```bash
-   cp .env.example .env
-   # Edit .env with your configuration
-   ```
-
-5. Run database migrations:
-   ```bash
-   python src/manage.py migrate
-   ```
-
-6. Start the development server:
-   ```bash
-   python src/manage.py runserver
-   ```
-
-## Usage
-
-[Add usage instructions here]
-
-## Development
-
-### Running Tests
+Use a supported Python version compatible with the dependencies. Python 3.11 is the current Dockerfile runtime baseline.
 
 ```bash
-pytest tests/
-# or
-python -m unittest discover tests/
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+pip install -r requirements.txt
+pip install -r requirements-dev.txt
+export SECRET_KEY='local-development-only'
+export DJANGO_SETTINGS_MODULE=config.settings.development
+python src/manage.py check
+python src/manage.py makemigrations --check --dry-run
+python src/manage.py migrate
+pytest --cov=src --cov-report=term-missing
+python src/manage.py runserver
 ```
 
-### Code Style
+Configure PostgreSQL and required environment variables for integration testing. Never use production credentials locally. Review `.github/SECRETS_SETUP.md` before configuring deployment.
 
-This project follows [PEP 8](https://pep8.org/) style guidelines. Use linting tools:
+## Quality checks
 
 ```bash
-flake8 src/
-black src/
+pre-commit run --all-files
+pytest --cov=src --cov-report=xml --cov-fail-under=70
+python src/manage.py check
+python src/manage.py makemigrations --check --dry-run
 ```
 
-### Contributing
+Run checks from the repository root. CI becomes an authoritative merge gate only after workflow startup and configuration failures are resolved.
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+## Deployment status
 
-Please read [CONTRIBUTING.md](docs/CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.
+A Dockerfile and production settings exist, but their presence does not establish deployability. Verify the container health-check route, production environment validation, migration execution, static-file serving, database readiness, image publication, and rollback before deploying.
 
-## Documentation
+## Engineering plan
 
-Detailed documentation is available in the [`docs/`](docs/) directory:
-- [Architecture Overview](docs/architecture.md)
-- [API Documentation](docs/api.md)
-- [Module Specifications](docs/modules/)
+See [Production Readiness Roadmap](docs/PRODUCTION_READINESS_ROADMAP.md) for the verified baseline, implementation sequence, exit criteria, and release requirements.
+
+## Contribution workflow
+
+1. Create a focused branch from current `main`.
+2. Add or update tests with each behavior change.
+3. Run formatting, lint, security, Django checks, migration checks, and tests.
+4. Open a pull request; do not push directly to protected `main`.
+5. Merge only after required checks and review pass.
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Contact
-
-- Project Lead: [Your Name]
-- Email: [your.email@example.com]
-- Issue Tracker: [GitHub Issues](../../issues)
-
-## Roadmap
-
-- [ ] Core infrastructure setup
-- [ ] User authentication module
-- [ ] Inventory management module
-- [ ] Financial reporting module
-- [ ] API development
-- [ ] Frontend interface
-- [ ] Deployment automation
-
----
-
-*Last updated: June 2024*
+See [LICENSE](LICENSE).
